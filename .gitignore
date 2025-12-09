@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+
+*.class
+out/
+build/
+
+# Optional: ignore big media
+*.mp4
+*.mov
+*.avi
+*.mkv
