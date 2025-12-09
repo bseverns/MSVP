@@ -180,15 +180,4 @@ Do the same in `MidiClockMonitor.pde` and `MidiClockSimulator.pde` (for output).
 
 ---
 
-## Git basics
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: MIDI-synced video + Syphon sketches"
-# then on GitHub:
-git remote add origin <your_repo_url>
-git push -u origin main
-```
-
 MIT licensed. See `LICENSE` for details.
