@@ -1,6 +1,7 @@
 import themidibus.*;
 
 MidiBus midiOut;
+boolean midiReady = false;
 
 float bpm = 120.0;      // simulated BPM
 int   channel = 0;      // MIDI channel for CCs (0-based: 0 == Ch1)
@@ -23,7 +24,8 @@ void setup() {
   MidiBus.list();
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
-  midiOut = new MidiBus(this, -1, 0);
+  midiOut = safeMidiBus(-1, 0);
+  midiReady = (midiOut != null);
 
   lastTickMs = millis();
 }
@@ -36,6 +38,9 @@ void draw() {
   text("Ticks per beat: " + ticksPerBeatSim, 10, 50);
   text("Sending MIDI Clock + CC on channel " + (channel + 1), 10, 70);
   text("Output device index is set in setup()", 10, 90);
+  if (!midiReady) {
+    text("MIDI: not connected (see console)", 10, 120);
+  }
 
   long now = millis();
   if (now - lastTickMs >= msPerTick) {
@@ -65,4 +70,18 @@ void sendCCLFO() {
   float lfo = 0.5 + 0.5 * sin(TWO_PI * lfoSpeed * t);
   int value = int(lfo * 127.0);
   midiOut.sendControllerChange(channel, ccNumber, value);
+}
+
+MidiBus safeMidiBus(int inputIndex, int outputIndex) {
+  try {
+    return new MidiBus(this, inputIndex, outputIndex);
+  } catch (Exception e) {
+    println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+    println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+    println("virtual loopback device is installed.");
+    println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+    println("hardware device index from MidiBus.list(), then update the indices above.");
+    e.printStackTrace();
+    return null;
+  }
 }
