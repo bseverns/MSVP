@@ -20,6 +20,20 @@ Adapt them to your controller layout as needed.
 
 ---
 
+## Control Glossary (visual outcome)
+
+| Control | What you see on screen |
+|---------|-------------------------|
+| `linesPerFrame` | How crowded the frame feels: a few quiet marks vs. a wall of scratches. |
+| `maxLineSize` | How far a single stroke can stretch before it breaks. |
+| `opacityMin` | The faintest a line can get: ghost haze vs. full ink. |
+| `effectIntervalBeats` | How often the glitch wakes up. |
+| `effectDurationBeats` | How long the glitch sticks around. |
+| `bpmSmoothing` | How quickly the visuals chase tempo changes. |
+| `effectBias` | Whether you mostly see lines, rotations, or a mix. |
+
+---
+
 ## Suggested Layout (generic 8-knob controller)
 
 - **Knob 1 (CC1)** – Texture density  
