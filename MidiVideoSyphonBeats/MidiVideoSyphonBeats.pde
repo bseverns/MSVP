@@ -6,6 +6,7 @@ Movie video;
 SyphonServer syphonServer;
 MidiBus midiBus;
 boolean midiReady = false;
+String midiStatusMessage = "";
 
 int currentLineSize;
 float currentStrokeWeight;
@@ -45,8 +46,16 @@ void setup() {
   // Choose correct MIDI input index after checking MidiBus.list() in console
   MidiBus.list();
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  midiBus = safeMidiBus(midiInputIndex, -1);
-  midiReady = (midiBus != null);
+  if (midiInputIndex == -1) {
+    midiReady = false;
+    midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
+  } else {
+    midiBus = safeMidiBus(midiInputIndex, -1);
+    midiReady = (midiBus != null);
+    if (!midiReady) {
+      midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
+    }
+  }
 
   updateLineProperties();
 }
@@ -102,6 +111,9 @@ void draw() {
   text("IntervalBeats: " + effectIntervalBeats + "  DurationBeats: " + effectDurationBeats, 10, 100);
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 120);
+    if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
+      text(midiStatusMessage, 10, 140);
+    }
   }
 }
 
@@ -214,6 +226,7 @@ void movieEvent(Movie m) {
 
 // MIDI clock → BPM + beatCount
 void rawMidi(byte[] data) {
+  if (!midiReady) return;
   if (data == null || data.length == 0) return;
 
   int status = data[0] & 0xFF;
@@ -240,6 +253,7 @@ void rawMidi(byte[] data) {
 
 // Generic MIDI CC mappings (any channel)
 void controllerChange(int channel, int number, int value) {
+  if (!midiReady) return;
   if (number == 1) {  // CC1: line density
     linesPerFrame = int(map(value, 0, 127,
                             CFG_LINES_PER_FRAME_MIN,
@@ -286,6 +300,7 @@ void controllerChange(int channel, int number, int value) {
 
 // Optional note mapping hooks
 void noteOn(int channel, int pitch, int velocity) {
+  if (!midiReady) return;
   // Example: pad to reset config
   // if (pitch == 36 && velocity > 0) loadDefaultConfig();
 }

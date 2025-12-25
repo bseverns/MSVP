@@ -2,6 +2,7 @@ import themidibus.*;
 
 MidiBus midiBus;
 boolean midiReady = false;
+String midiStatusMessage = "";
 
 int   ticksPerBeatMon   = 24;
 int   tickCounterMon    = 0;
@@ -19,8 +20,16 @@ void setup() {
 
   MidiBus.list();
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  midiBus = safeMidiBus(midiInputIndex, -1);
-  midiReady = (midiBus != null);
+  if (midiInputIndex == -1) {
+    midiReady = false;
+    midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
+  } else {
+    midiBus = safeMidiBus(midiInputIndex, -1);
+    midiReady = (midiBus != null);
+    if (!midiReady) {
+      midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
+    }
+  }
 }
 
 void draw() {
@@ -32,10 +41,14 @@ void draw() {
   text("Watch console for detailed logs.", 10, 110);
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 140);
+    if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
+      text(midiStatusMessage, 10, 160);
+    }
   }
 }
 
 void rawMidi(byte[] data) {
+  if (!midiReady) return;
   if (data == null || data.length == 0) return;
 
   int status = data[0] & 0xFF;
@@ -64,9 +77,11 @@ void rawMidi(byte[] data) {
 }
 
 void noteOn(int channel, int pitch, int velocity) {
+  if (!midiReady) return;
   println("noteOn  ch:" + channel + "  pitch:" + pitch + "  vel:" + velocity);
 }
 
 void controllerChange(int channel, int number, int value) {
+  if (!midiReady) return;
   println("CC  ch:" + channel + "  num:" + number + "  val:" + value);
 }
