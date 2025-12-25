@@ -2,6 +2,7 @@ import themidibus.*;
 
 MidiBus midiOut;
 boolean midiReady = false;
+String midiStatusMessage = "";
 
 float bpm = 120.0;      // simulated BPM
 int   channel = 0;      // MIDI channel for CCs (0-based: 0 == Ch1)
@@ -25,8 +26,16 @@ void setup() {
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
   int midiOutputIndex = findMidiOutputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  midiOut = safeMidiBus(-1, midiOutputIndex);
-  midiReady = (midiOut != null);
+  if (midiOutputIndex == -1) {
+    midiReady = false;
+    midiStatusMessage = "MIDI ERROR: no safe output found (\"Real Time Sequencer\" is ignored).";
+  } else {
+    midiOut = safeMidiBus(-1, midiOutputIndex);
+    midiReady = (midiOut != null);
+    if (!midiReady) {
+      midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
+    }
+  }
 
   lastTickMs = millis();
 }
@@ -41,15 +50,20 @@ void draw() {
   text("Output device index is set in setup()", 10, 90);
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 120);
+    if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
+      text(midiStatusMessage, 10, 140);
+    }
   }
 
-  long now = millis();
-  if (now - lastTickMs >= msPerTick) {
-    sendClockTick();
-    lastTickMs += (long)msPerTick;
-  }
+  if (midiReady) {
+    long now = millis();
+    if (now - lastTickMs >= msPerTick) {
+      sendClockTick();
+      lastTickMs += (long)msPerTick;
+    }
 
-  sendCCLFO();
+    sendCCLFO();
+  }
 }
 
 void computeMsPerTick() {
@@ -58,14 +72,14 @@ void computeMsPerTick() {
 }
 
 void sendClockTick() {
-  if (midiOut == null) return;
+  if (!midiReady || midiOut == null) return;
   byte[] msg = new byte[1];
   msg[0] = (byte)0xF8;  // MIDI Clock
   midiOut.sendMessage(msg);
 }
 
 void sendCCLFO() {
-  if (midiOut == null) return;
+  if (!midiReady || midiOut == null) return;
 
   float t = millis() / 1000.0;
   float lfo = 0.5 + 0.5 * sin(TWO_PI * lfoSpeed * t);
