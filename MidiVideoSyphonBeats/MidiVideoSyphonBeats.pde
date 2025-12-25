@@ -6,6 +6,7 @@ Movie video;
 SyphonServer syphonServer;
 MidiBus midiBus;
 boolean midiReady = false;
+boolean midiInitFailed = false;
 String midiStatusMessage = "";
 
 int currentLineSize;
@@ -53,6 +54,7 @@ void setup() {
     midiBus = safeMidiBus(midiInputIndex, -1);
     midiReady = (midiBus != null);
     if (!midiReady) {
+      midiInitFailed = true;
       midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
     }
   }
@@ -240,6 +242,19 @@ void drawMidiMissingOverlay() {
   textAlign(CENTER, CENTER);
   textSize(36);
   text("No MIDI port; check console", width / 2.0, height / 2.0);
+  popStyle();
+}
+
+void drawMidiInitFailedOverlay() {
+  // MIDI init exploded; keep the message loud and unmissable.
+  pushStyle();
+  fill(120, 0, 0, 200);
+  noStroke();
+  rect(0, 0, width, height);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(36);
+  text("MIDI init failed; see console", width / 2.0, height / 2.0);
   popStyle();
 }
 
