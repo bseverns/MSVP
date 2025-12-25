@@ -34,6 +34,30 @@ videoProcessing-midi-sync/
       noop.yml         # placeholder CI workflow
 ```
 
+## Signal Flow (AKA "what talks to what")
+
+```text
+MIDI clock/CC
+    ↓
+Processing (MidiVideoSyphonBeats)
+    ↓
+Syphon
+    ↓
+VJ app
+```
+
+### Wiring recipes (copy/paste this into your muscle memory)
+
+1. **DAW → virtual MIDI loopback → Processing**
+   - Clock + CC out of your DAW.
+   - Pipe it through a virtual MIDI cable (IAC, loopMIDI, etc.).
+   - Point `MidiVideoSyphonBeats` at that input. Boom: tempo-locked visuals.
+
+2. **Processing → Syphon → Resolume**
+   - `MidiVideoSyphonBeats` is your Syphon server.
+   - Resolume is the receiver.
+   - Add a Syphon source in Resolume and play it like a synth with pixels.
+
 ## Requirements
 
 1. **Processing** (Java mode)
