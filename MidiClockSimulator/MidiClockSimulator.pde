@@ -24,7 +24,8 @@ void setup() {
   MidiBus.list();
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
-  midiOut = safeMidiBus(-1, 0);
+  int midiOutputIndex = findMidiOutputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+  midiOut = safeMidiBus(-1, midiOutputIndex);
   midiReady = (midiOut != null);
 
   lastTickMs = millis();
@@ -84,4 +85,26 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
     e.printStackTrace();
     return null;
   }
+}
+
+int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
+  String[] outputs = MidiBus.availableOutputs();
+  if (outputs == null || outputs.length == 0) {
+    return fallbackIndex;
+  }
+
+  for (int i = 0; i < outputs.length; i++) {
+    String outputName = outputs[i];
+    if (outputName == null) continue;
+    String normalized = outputName.toLowerCase();
+    for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
+      String hint = nameHints[hintIndex];
+      if (hint == null) continue;
+      if (normalized.indexOf(hint.toLowerCase()) >= 0) {
+        return i;
+      }
+    }
+  }
+
+  return fallbackIndex;
 }
