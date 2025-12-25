@@ -166,6 +166,13 @@ Place a video file in:
 MidiVideoSyphonBeats/data/video.mp4
 ```
 
+Quick spec sheet (keep it punk, keep it playable):
+
+- **Preferred codec:** H.264 (Processing’s `Movie` can choke on some codecs).
+- **Resolution:** 720p is a solid default; 1080p if your machine’s beefy; lower if it stutters.
+- **File size:** Keep it reasonable — smaller files = faster load + fewer dropped frames.
+  Dropping resolution is the easiest win when the effect-heavy `draw()` loop starts to sweat.
+
 Or update the filename in `MidiVideoSyphonBeats.pde`:
 
 ```java
