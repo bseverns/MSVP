@@ -67,6 +67,16 @@ void draw() {
     return;
   }
 
+  if (!midiReady) {
+    // MIDI isn't online yet: keep the window alive, show the raw video,
+    // and avoid any beat-tied behavior so the visuals don't pretend-sync.
+    image(video, 0, 0, width, height);
+    syphonServer.sendScreen();
+    drawMidiMissingOverlay();
+    drawHud();
+    return;
+  }
+
   // 100 BPM → speed 1.0
   videoSpeed = bpm / 100.0;
   video.speed(videoSpeed);
@@ -100,21 +110,7 @@ void draw() {
   }
 
   syphonServer.sendScreen();
-
-  // HUD
-  fill(255);
-  textSize(14);
-  text("BPM: " + nf(bpm, 0, 1), 10, 20);
-  text("Beat: " + beatCount, 10, 40);
-  text("Effect: " + effectType + (effectActive ? " (ON)" : " (OFF)"), 10, 60);
-  text("Lines/frame: " + linesPerFrame, 10, 80);
-  text("IntervalBeats: " + effectIntervalBeats + "  DurationBeats: " + effectDurationBeats, 10, 100);
-  if (!midiReady) {
-    text("MIDI: not connected (see console)", 10, 120);
-    if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
-      text(midiStatusMessage, 10, 140);
-    }
-  }
+  drawHud();
 }
 
 void onBeat() {
@@ -217,6 +213,36 @@ void rotateImage(PImage img) {
 void updateLineProperties() {
   currentLineSize = int(random(10, maxLineSize));
   currentStrokeWeight = random(1, 5);
+}
+
+void drawHud() {
+  // HUD
+  fill(255);
+  textSize(14);
+  text("BPM: " + nf(bpm, 0, 1), 10, 20);
+  text("Beat: " + beatCount, 10, 40);
+  text("Effect: " + effectType + (effectActive ? " (ON)" : " (OFF)"), 10, 60);
+  text("Lines/frame: " + linesPerFrame, 10, 80);
+  text("IntervalBeats: " + effectIntervalBeats + "  DurationBeats: " + effectDurationBeats, 10, 100);
+  if (!midiReady) {
+    text("MIDI: not connected (see console)", 10, 120);
+    if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
+      text(midiStatusMessage, 10, 140);
+    }
+  }
+}
+
+void drawMidiMissingOverlay() {
+  // Loud overlay so you can spot the missing MIDI at a glance.
+  pushStyle();
+  fill(0, 180);
+  noStroke();
+  rect(0, 0, width, height);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(36);
+  text("No MIDI port; check console", width / 2.0, height / 2.0);
+  popStyle();
 }
 
 // Video frames
