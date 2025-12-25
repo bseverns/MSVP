@@ -64,9 +64,10 @@ void draw() {
   background(0);
 
   if (!midiReady) {
-    // MIDI isn't online yet: keep the window alive, stay black,
-    // and avoid touching video/effect state so nothing goes null.
+    // MIDI isn't online yet: keep the window alive, stay black, show HUD text,
+    // and skip every video/effect touchpoint so nothing tries to read null pixels.
     drawHud();
+    syphonServer.sendScreen();
     return;
   }
 
