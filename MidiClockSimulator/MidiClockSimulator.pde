@@ -72,39 +72,3 @@ void sendCCLFO() {
   int value = int(lfo * 127.0);
   midiOut.sendControllerChange(channel, ccNumber, value);
 }
-
-MidiBus safeMidiBus(int inputIndex, int outputIndex) {
-  try {
-    return new MidiBus(this, inputIndex, outputIndex);
-  } catch (Exception e) {
-    println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-    println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-    println("virtual loopback device is installed.");
-    println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-    println("hardware device index from MidiBus.list(), then update the indices above.");
-    e.printStackTrace();
-    return null;
-  }
-}
-
-int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
-  String[] outputs = MidiBus.availableOutputs();
-  if (outputs == null || outputs.length == 0) {
-    return fallbackIndex;
-  }
-
-  for (int i = 0; i < outputs.length; i++) {
-    String outputName = outputs[i];
-    if (outputName == null) continue;
-    String normalized = outputName.toLowerCase();
-    for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
-      String hint = nameHints[hintIndex];
-      if (hint == null) continue;
-      if (normalized.indexOf(hint.toLowerCase()) >= 0) {
-        return i;
-      }
-    }
-  }
-
-  return fallbackIndex;
-}

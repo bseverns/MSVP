@@ -20,15 +20,21 @@ videoProcessing-midi-sync/
   MidiVideoSyphonBeats/
     MidiVideoSyphonBeats.pde
     Config.pde
+    MidiHelpers.pde
     data/
       video.mp4        # you provide this
       .gitkeep
   MidiClockMonitor/
     MidiClockMonitor.pde
+    MidiHelpers.pde
   SyphonClientTest/
     SyphonClientTest.pde
   MidiClockSimulator/
     MidiClockSimulator.pde
+    MidiHelpers.pde
+  .github/
+    workflows/
+      noop.yml         # placeholder CI workflow
 ```
 
 ## Signal Flow (AKA "what talks to what")
@@ -214,6 +220,19 @@ Each sketch now uses a tiny `safeMidiBus(...)` helper that catches the NPE, prin
 why it failed, and keeps the window open so you can read the console. It won’t
 magically conjure a MIDI port, but it will stop the hard crash and tell you
 exactly what to fix.
+
+### Shared MIDI helper pattern (aka “keep it in lockstep”)
+
+Processing only auto-loads `.pde` files that live **inside** each sketch folder,
+so the shared helpers are intentionally duplicated as `MidiHelpers.pde` in every
+sketch that touches MIDI.
+
+**Workflow, punk-rock edition:**
+
+- Pick one `MidiHelpers.pde` to edit.
+- Copy those exact changes into the other `MidiHelpers.pde` files.
+- Now every sketch behaves the same, and future-you doesn’t get surprised on
+  stage.
 
 ### 3. Syphon output / input
 
