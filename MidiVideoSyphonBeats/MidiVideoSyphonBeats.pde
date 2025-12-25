@@ -63,17 +63,14 @@ void setup() {
 void draw() {
   background(0);
 
-  if (video.width == 0 || video.height == 0) {
+  if (!midiReady) {
+    // MIDI isn't online yet: keep the window alive, stay black,
+    // and avoid touching video/effect state so nothing goes null.
+    drawHud();
     return;
   }
 
-  if (!midiReady) {
-    // MIDI isn't online yet: keep the window alive, show the raw video,
-    // and avoid any beat-tied behavior so the visuals don't pretend-sync.
-    image(video, 0, 0, width, height);
-    syphonServer.sendScreen();
-    drawMidiMissingOverlay();
-    drawHud();
+  if (video.width == 0 || video.height == 0) {
     return;
   }
 
