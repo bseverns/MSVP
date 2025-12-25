@@ -18,7 +18,8 @@ void setup() {
   textAlign(LEFT, TOP);
 
   MidiBus.list();
-  midiBus = safeMidiBus(0, -1);   // adjust input index to your MIDI clock source
+  int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+  midiBus = safeMidiBus(midiInputIndex, -1);
   midiReady = (midiBus != null);
 }
 
@@ -82,4 +83,26 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
     e.printStackTrace();
     return null;
   }
+}
+
+int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
+  String[] inputs = MidiBus.availableInputs();
+  if (inputs == null || inputs.length == 0) {
+    return fallbackIndex;
+  }
+
+  for (int i = 0; i < inputs.length; i++) {
+    String inputName = inputs[i];
+    if (inputName == null) continue;
+    String normalized = inputName.toLowerCase();
+    for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
+      String hint = nameHints[hintIndex];
+      if (hint == null) continue;
+      if (normalized.indexOf(hint.toLowerCase()) >= 0) {
+        return i;
+      }
+    }
+  }
+
+  return fallbackIndex;
 }
