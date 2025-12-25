@@ -178,6 +178,7 @@ to open it.
 **Fix it like you mean it:**
 
 - **Install a virtual MIDI loopback** (IAC Bus on macOS, loopMIDI on Windows).
+- Quick setup guide: [`docs/midi-loopback-setup.md`](docs/midi-loopback-setup.md).
 - Route your DAW/simulator into that virtual port.
 - Use the virtual port’s **index** in the sketch.
 
