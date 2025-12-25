@@ -29,9 +29,6 @@ videoProcessing-midi-sync/
     SyphonClientTest.pde
   MidiClockSimulator/
     MidiClockSimulator.pde
-  .github/
-    workflows/
-      noop.yml         # placeholder CI workflow
 ```
 
 ## Signal Flow (AKA "what talks to what")
