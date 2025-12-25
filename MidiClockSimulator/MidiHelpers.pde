@@ -21,16 +21,21 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
   if (inputs == null || inputs.length == 0) {
+    println("No real MIDI ports found. Install IAC/loopMIDI.");
     return -1;
   }
 
+  int validCount = 0;
   for (int i = 0; i < inputs.length; i++) {
     String inputName = inputs[i];
     if (inputName == null) continue;
-    String normalized = inputName.toLowerCase();
+    String trimmed = inputName.trim();
+    if (trimmed.length() == 0) continue;
+    String normalized = trimmed.toLowerCase();
     if (normalized.indexOf("real time sequencer") >= 0) {
       continue;
     }
+    validCount++;
     for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
       String hint = nameHints[hintIndex];
       if (hint == null) continue;
@@ -42,27 +47,41 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 
   if (fallbackIndex >= 0 && fallbackIndex < inputs.length) {
     String fallbackName = inputs[fallbackIndex];
-    if (fallbackName != null && fallbackName.toLowerCase().indexOf("real time sequencer") < 0) {
-      return fallbackIndex;
+    if (fallbackName != null) {
+      String trimmed = fallbackName.trim();
+      if (trimmed.length() > 0) {
+        String normalized = trimmed.toLowerCase();
+        if (normalized.indexOf("real time sequencer") < 0) {
+          return fallbackIndex;
+        }
+      }
     }
   }
 
+  if (validCount == 0) {
+    println("No real MIDI ports found. Install IAC/loopMIDI.");
+  }
   return -1;
 }
 
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
   if (outputs == null || outputs.length == 0) {
+    println("No real MIDI ports found. Install IAC/loopMIDI.");
     return -1;
   }
 
+  int validCount = 0;
   for (int i = 0; i < outputs.length; i++) {
     String outputName = outputs[i];
     if (outputName == null) continue;
-    String normalized = outputName.toLowerCase();
+    String trimmed = outputName.trim();
+    if (trimmed.length() == 0) continue;
+    String normalized = trimmed.toLowerCase();
     if (normalized.indexOf("real time sequencer") >= 0) {
       continue;
     }
+    validCount++;
     for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
       String hint = nameHints[hintIndex];
       if (hint == null) continue;
@@ -74,10 +93,19 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
 
   if (fallbackIndex >= 0 && fallbackIndex < outputs.length) {
     String fallbackName = outputs[fallbackIndex];
-    if (fallbackName != null && fallbackName.toLowerCase().indexOf("real time sequencer") < 0) {
-      return fallbackIndex;
+    if (fallbackName != null) {
+      String trimmed = fallbackName.trim();
+      if (trimmed.length() > 0) {
+        String normalized = trimmed.toLowerCase();
+        if (normalized.indexOf("real time sequencer") < 0) {
+          return fallbackIndex;
+        }
+      }
     }
   }
 
+  if (validCount == 0) {
+    println("No real MIDI ports found. Install IAC/loopMIDI.");
+  }
   return -1;
 }
