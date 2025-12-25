@@ -6,8 +6,8 @@ Processing sketches for live video processing with:
 - **Beat-quantized effects** (video-speed synced to BPM)
 - **Syphon output** to other tools (Resolume, MadMapper, VDMX, other Processing sketches)
 - A helper sketch to **monitor MIDI BPM + beat count**
-- A **Syphon client test** sketch
 - A **MIDI clock + CC simulator** sketch
+- A set of **Syphon demos** (client test + post-process feedback toy)
 
 ## Structure
 
@@ -26,15 +26,14 @@ videoProcessing-midi-sync/
       .gitkeep
   MidiClockMonitor/
     MidiClockMonitor.pde
-    MidiHelpers.pde
-  SyphonClientTest/
-    SyphonClientTest.pde
   MidiClockSimulator/
     MidiClockSimulator.pde
-    MidiHelpers.pde
-  .github/
-    workflows/
-      noop.yml         # placeholder CI workflow
+  demos/
+    README.md
+    SyphonClientTest/
+      SyphonClientTest.pde
+    SyphonPostProcess/
+      SyphonPostProcess.pde
 ```
 
 ## Signal Flow (AKA "what talks to what")
@@ -129,18 +128,14 @@ Use this first to:
 
 ---
 
-## Sketch: SyphonClientTest
+## Demos (Syphon playground)
 
-Simple Syphon **client** that:
+The Syphon client + post-process sketches are **demos**, not core tools. They live in `demos/` and act as quick sanity checks plus remixable starting points.
 
-- Connects to a Syphon server (by default the first available one).
-- Draws the incoming Syphon texture to the window.
-- Optionally overlays a minimal HUD so you can see it’s alive.
+- **SyphonClientTest**: dead-simple Syphon client to confirm your server is alive.
+- **SyphonPostProcess**: feedback-tunnel post-process toy for learning how to fold Syphon frames into your own buffer.
 
-Use this to:
-
-- Test that your Syphon server (e.g. `MidiVideoSyphonBeats`) is working.
-- Chain Processing → Syphon → another Processing sketch.
+See `demos/README.md` for the full intent + usage notes.
 
 ---
 
@@ -242,7 +237,7 @@ sketch that touches MIDI.
   MidiVideoSyphonBeats
   ```
 
-- **Input**: `SyphonClientTest` will connect to the first available Syphon server by default.
+- **Input**: `demos/SyphonClientTest` will connect to the first available Syphon server by default.
 
 ---
 
