@@ -1,6 +1,7 @@
 import themidibus.*;
 
 MidiBus midiBus;
+boolean midiReady = false;
 
 int   ticksPerBeatMon   = 24;
 int   tickCounterMon    = 0;
@@ -17,7 +18,8 @@ void setup() {
   textAlign(LEFT, TOP);
 
   MidiBus.list();
-  midiBus = new MidiBus(this, 0, -1);   // adjust input index to your MIDI clock source
+  midiBus = safeMidiBus(0, -1);   // adjust input index to your MIDI clock source
+  midiReady = (midiBus != null);
 }
 
 void draw() {
@@ -27,6 +29,9 @@ void draw() {
   text("Beat: " + beatCountMon, 10, 40);
   text("BPM:  " + nf(bpmMon, 0, 2), 10, 70);
   text("Watch console for detailed logs.", 10, 110);
+  if (!midiReady) {
+    text("MIDI: not connected (see console)", 10, 140);
+  }
 }
 
 void rawMidi(byte[] data) {
@@ -63,4 +68,18 @@ void noteOn(int channel, int pitch, int velocity) {
 
 void controllerChange(int channel, int number, int value) {
   println("CC  ch:" + channel + "  num:" + number + "  val:" + value);
+}
+
+MidiBus safeMidiBus(int inputIndex, int outputIndex) {
+  try {
+    return new MidiBus(this, inputIndex, outputIndex);
+  } catch (Exception e) {
+    println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+    println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+    println("virtual loopback device is installed.");
+    println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+    println("hardware device index from MidiBus.list(), then update the indices above.");
+    e.printStackTrace();
+    return null;
+  }
 }

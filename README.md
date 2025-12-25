@@ -168,6 +168,24 @@ video = new Movie(this, "your-video-name.mp4");
 
 Do the same in `MidiClockMonitor.pde` and `MidiClockSimulator.pde` (for output).
 
+### 2.5. MIDI device gotchas (aka: why “Real Time Sequencer” bites you)
+
+If your console only shows **"Real Time Sequencer"** and the sketch crashes on the
+`new MidiBus(...)` line, that device is *not* a real port. It’s Java’s internal
+software sequencer, and TheMidiBus can throw a `NullPointerException` when you try
+to open it.
+
+**Fix it like you mean it:**
+
+- **Install a virtual MIDI loopback** (IAC Bus on macOS, loopMIDI on Windows).
+- Route your DAW/simulator into that virtual port.
+- Use the virtual port’s **index** in the sketch.
+
+Each sketch now uses a tiny `safeMidiBus(...)` helper that catches the NPE, prints
+why it failed, and keeps the window open so you can read the console. It won’t
+magically conjure a MIDI port, but it will stop the hard crash and tell you
+exactly what to fix.
+
 ### 3. Syphon output / input
 
 - **Output**: `MidiVideoSyphonBeats` exposes a Syphon server named:

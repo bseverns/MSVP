@@ -5,6 +5,7 @@ import themidibus.*;
 Movie video;
 SyphonServer syphonServer;
 MidiBus midiBus;
+boolean midiReady = false;
 
 int currentLineSize;
 float currentStrokeWeight;
@@ -43,7 +44,8 @@ void setup() {
 
   // Choose correct MIDI input index after checking MidiBus.list() in console
   MidiBus.list();
-  midiBus = new MidiBus(this, 0, -1);  // change 0 to your MIDI input index
+  midiBus = safeMidiBus(0, -1);  // change 0 to your MIDI input index
+  midiReady = (midiBus != null);
 
   updateLineProperties();
 }
@@ -97,6 +99,9 @@ void draw() {
   text("Effect: " + effectType + (effectActive ? " (ON)" : " (OFF)"), 10, 60);
   text("Lines/frame: " + linesPerFrame, 10, 80);
   text("IntervalBeats: " + effectIntervalBeats + "  DurationBeats: " + effectDurationBeats, 10, 100);
+  if (!midiReady) {
+    text("MIDI: not connected (see console)", 10, 120);
+  }
 }
 
 void onBeat() {
@@ -204,6 +209,20 @@ void updateLineProperties() {
 // Video frames
 void movieEvent(Movie m) {
   m.read();
+}
+
+MidiBus safeMidiBus(int inputIndex, int outputIndex) {
+  try {
+    return new MidiBus(this, inputIndex, outputIndex);
+  } catch (Exception e) {
+    println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+    println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+    println("virtual loopback device is installed.");
+    println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+    println("hardware device index from MidiBus.list(), then update the indices above.");
+    e.printStackTrace();
+    return null;
+  }
 }
 
 // MIDI clock → BPM + beatCount
