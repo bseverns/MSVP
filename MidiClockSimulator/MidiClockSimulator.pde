@@ -2,6 +2,7 @@ import themidibus.*;
 
 MidiBus midiOut;
 boolean midiReady = false;
+boolean midiInitFailed = false;
 String midiStatusMessage = "";
 
 float bpm = 120.0;      // simulated BPM
@@ -33,6 +34,7 @@ void setup() {
     midiOut = safeMidiBus(-1, midiOutputIndex);
     midiReady = (midiOut != null);
     if (!midiReady) {
+      midiInitFailed = true;
       midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
     }
   }
@@ -52,6 +54,9 @@ void draw() {
     text("MIDI: not connected (see console)", 10, 120);
     if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
       text(midiStatusMessage, 10, 140);
+    }
+    if (midiInitFailed) {
+      text("MIDI init failed; see console", 10, 160);
     }
   }
 
