@@ -37,6 +37,30 @@ videoProcessing-midi-sync/
       noop.yml         # placeholder CI workflow
 ```
 
+## Signal Flow (AKA "what talks to what")
+
+```text
+MIDI clock/CC
+    ↓
+Processing (MidiVideoSyphonBeats)
+    ↓
+Syphon
+    ↓
+VJ app
+```
+
+### Wiring recipes (copy/paste this into your muscle memory)
+
+1. **DAW → virtual MIDI loopback → Processing**
+   - Clock + CC out of your DAW.
+   - Pipe it through a virtual MIDI cable (IAC, loopMIDI, etc.).
+   - Point `MidiVideoSyphonBeats` at that input. Boom: tempo-locked visuals.
+
+2. **Processing → Syphon → Resolume**
+   - `MidiVideoSyphonBeats` is your Syphon server.
+   - Resolume is the receiver.
+   - Add a Syphon source in Resolume and play it like a synth with pixels.
+
 ## Requirements
 
 1. **Processing** (Java mode)
@@ -145,6 +169,13 @@ Place a video file in:
 MidiVideoSyphonBeats/data/video.mp4
 ```
 
+Quick spec sheet (keep it punk, keep it playable):
+
+- **Preferred codec:** H.264 (Processing’s `Movie` can choke on some codecs).
+- **Resolution:** 720p is a solid default; 1080p if your machine’s beefy; lower if it stutters.
+- **File size:** Keep it reasonable — smaller files = faster load + fewer dropped frames.
+  Dropping resolution is the easiest win when the effect-heavy `draw()` loop starts to sweat.
+
 Or update the filename in `MidiVideoSyphonBeats.pde`:
 
 ```java
@@ -181,6 +212,7 @@ to open it.
 **Fix it like you mean it:**
 
 - **Install a virtual MIDI loopback** (IAC Bus on macOS, loopMIDI on Windows).
+- Quick setup guide: [`docs/midi-loopback-setup.md`](docs/midi-loopback-setup.md).
 - Route your DAW/simulator into that virtual port.
 - Use the virtual port’s **index** in the sketch.
 
