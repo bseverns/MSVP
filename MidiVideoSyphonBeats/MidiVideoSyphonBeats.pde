@@ -56,6 +56,7 @@ void setup() {
     int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
     if (midiInputIndex == -1) {
       midiReady = false;
+      midiInitFailed = true;
       midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
     } else {
       midiBus = safeMidiBus(midiInputIndex, -1);
