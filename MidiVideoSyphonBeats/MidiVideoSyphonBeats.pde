@@ -8,6 +8,7 @@ MidiBus midiBus;
 boolean midiReady = false;
 boolean midiInitFailed = false;
 boolean midiPortsValid = true;
+boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
 
 int currentLineSize;
@@ -51,6 +52,7 @@ void setup() {
   if (!hasNonEmptyMidiDeviceLists()) {
     midiReady = false;
     midiPortsValid = false;
+    midiDeviceListsEmpty = true;
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
   } else {
     midiPortsValid = hasValidMidiPorts();
@@ -261,8 +263,8 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(18);
-  String bannerMessage = (midiStatusMessage != null && !midiStatusMessage.equals(""))
-    ? midiStatusMessage
+  String bannerMessage = midiDeviceListsEmpty
+    ? NO_VALID_MIDI_DEVICES_MESSAGE
     : "No valid MIDI ports detected";
   text(bannerMessage, 14, 8);
   popStyle();
