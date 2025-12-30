@@ -47,6 +47,7 @@ void setup() {
       println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
       println("hardware device index from MidiBus.list(), then update the indices above.");
       e.printStackTrace();
+      return;
     }
   }
 }
@@ -60,6 +61,9 @@ void draw() {
   text("Watch console for detailed logs.", 10, 110);
   if (midiDeviceListsEmpty) {
     drawNoValidMidiBanner();
+  }
+  if (midiInitFailed) {
+    drawMidiInitFailedBanner();
   }
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 140);
@@ -85,6 +89,19 @@ void drawNoValidMidiBanner() {
     ? NO_VALID_MIDI_DEVICES_MESSAGE
     : "No valid MIDI ports detected";
   text(bannerMessage, 10, 6);
+  popStyle();
+}
+
+void drawMidiInitFailedBanner() {
+  // Big red heads-up: the MIDI init threw, so the monitor is idling on purpose.
+  pushStyle();
+  fill(180, 40, 0);
+  noStroke();
+  rect(0, 28, width, 28);
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(14);
+  text("MIDI init failed (see console)", 10, 34);
   popStyle();
 }
 
