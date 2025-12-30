@@ -59,7 +59,7 @@ boolean containsRealMidiPort(String[] ports) {
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
   if (inputs == null || inputs.length == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println("No usable MIDI input ports detected. Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
     return -1;
   }
 
@@ -97,7 +97,7 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println("No usable MIDI input ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
   }
   return -1;
 }
@@ -105,7 +105,7 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
   if (outputs == null || outputs.length == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println("No usable MIDI output ports detected. Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
     return -1;
   }
 
@@ -143,7 +143,7 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println("No usable MIDI output ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
   }
   return -1;
 }
