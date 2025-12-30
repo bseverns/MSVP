@@ -25,18 +25,19 @@ void setup() {
   computeMsPerTick();
 
   MidiBus.list();
-  // Validate both input + output lists before we even attempt MidiBus init.
-  midiPortsValid = hasValidMidiPorts();
+  // Validate outputs before we even attempt MidiBus init.
+  // (Input is -1 on purpose, so output health is the only gatekeeper here.)
+  midiPortsValid = containsRealMidiPort(MidiBus.availableOutputs());
   if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = "No valid MIDI ports detected";
+    midiStatusMessage = "No valid MIDI output ports detected. Skipping MidiBus init.";
   } else {
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
   int midiOutputIndex = findMidiOutputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
   if (midiOutputIndex == -1) {
     midiReady = false;
-    midiStatusMessage = "MIDI ERROR: no safe output found (\"Real Time Sequencer\" is ignored).";
+    midiStatusMessage = "MIDI WARNING: no safe output found (\"Real Time Sequencer\" is ignored).";
   } else {
     try {
       midiOut = new MidiBus(this, -1, midiOutputIndex);
