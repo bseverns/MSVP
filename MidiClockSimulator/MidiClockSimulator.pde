@@ -25,8 +25,8 @@ void setup() {
   computeMsPerTick();
 
   MidiBus.list();
-  // Validate outputs before we even attempt MidiBus init.
-  if (!hasUsableMidiOutputs()) {
+  // Validate both input + output lists before we even attempt MidiBus init.
+  if (!hasNonEmptyMidiDeviceLists()) {
     midiReady = false;
     midiDeviceListsEmpty = true;
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
@@ -39,14 +39,22 @@ void setup() {
     midiReady = false;
     midiStatusMessage = "MIDI WARNING: no safe output found (\"Real Time Sequencer\" is ignored).";
   } else {
-    midiOut = safeMidiBus(-1, midiOutputIndex);
-    if (midiOut == null) {
+    try {
+      midiOut = new MidiBus(this, -1, midiOutputIndex);
+      midiReady = true;
+    } catch (Throwable e) {
+      midiOut = null;
       midiReady = false;
       midiInitFailed = true;
       midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
+      println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+      println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+      println("virtual loopback device is installed.");
+      println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+      println("hardware device index from MidiBus.list(), then update the indices above.");
+      e.printStackTrace();
       return;
     }
-    midiReady = true;
   }
   }
 
