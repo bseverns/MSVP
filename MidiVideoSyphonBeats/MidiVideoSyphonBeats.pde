@@ -7,7 +7,6 @@ SyphonServer syphonServer;
 MidiBus midiBus;
 boolean midiReady = false;
 boolean midiInitFailed = false;
-boolean midiPortsValid = true;
 boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
 
@@ -51,18 +50,10 @@ void setup() {
   // Validate both input + output lists before we even attempt MidiBus init.
   if (!hasNonEmptyMidiDeviceLists()) {
     midiReady = false;
-    midiPortsValid = false;
     midiDeviceListsEmpty = true;
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
-  } else {
-    midiPortsValid = hasValidMidiPorts();
   }
-  if (!midiPortsValid) {
-    midiReady = false;
-    if (midiStatusMessage == null || midiStatusMessage.equals("")) {
-      midiStatusMessage = "No valid MIDI ports detected";
-    }
-  } else {
+  if (!midiDeviceListsEmpty) {
     int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
     if (midiInputIndex == -1) {
       midiReady = false;
@@ -88,7 +79,7 @@ void draw() {
     // MIDI isn't online yet: keep the window alive, stay black, show HUD text,
     // and skip every video/effect touchpoint so nothing tries to read null pixels.
     drawHud();
-    if (!midiPortsValid) {
+    if (midiDeviceListsEmpty) {
       drawNoValidMidiBanner();
     }
     syphonServer.sendScreen();

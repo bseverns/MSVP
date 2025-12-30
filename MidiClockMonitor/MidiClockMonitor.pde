@@ -3,7 +3,6 @@ import themidibus.*;
 MidiBus midiBus;
 boolean midiReady = false;
 boolean midiInitFailed = false;
-boolean midiPortsValid = true;
 boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
 
@@ -25,15 +24,8 @@ void setup() {
   // Validate both input + output lists before we even attempt MidiBus init.
   if (!hasNonEmptyMidiDeviceLists()) {
     midiReady = false;
-    midiPortsValid = false;
     midiDeviceListsEmpty = true;
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
-    return;
-  }
-  midiPortsValid = hasValidMidiPorts();
-  if (!midiPortsValid) {
-    midiReady = false;
-    midiStatusMessage = "No valid MIDI ports detected";
     return;
   }
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
@@ -66,7 +58,7 @@ void draw() {
   text("Beat: " + beatCountMon, 10, 40);
   text("BPM:  " + nf(bpmMon, 0, 2), 10, 70);
   text("Watch console for detailed logs.", 10, 110);
-  if (!midiPortsValid) {
+  if (midiDeviceListsEmpty) {
     drawNoValidMidiBanner();
   }
   if (!midiReady) {
