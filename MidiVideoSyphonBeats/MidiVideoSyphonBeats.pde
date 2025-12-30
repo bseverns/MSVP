@@ -7,6 +7,7 @@ SyphonServer syphonServer;
 MidiBus midiBus;
 boolean midiReady = false;
 boolean midiInitFailed = false;
+boolean midiPortsValid = true;
 String midiStatusMessage = "";
 
 int currentLineSize;
@@ -46,25 +47,24 @@ void setup() {
 
   // Choose correct MIDI input index after checking MidiBus.list() in console
   MidiBus.list();
-  int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  if (midiInputIndex == -1) {
+  // Validate both input + output lists before we even attempt MidiBus init.
+  midiPortsValid = hasValidMidiPorts();
+  if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
+    midiStatusMessage = "No valid MIDI ports detected";
   } else {
-    try {
-      midiBus = new MidiBus(this, midiInputIndex, -1);
-      midiReady = true;
-    } catch (Throwable e) {
-      midiBus = null;
+    int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+    if (midiInputIndex == -1) {
       midiReady = false;
       midiInitFailed = true;
-      midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
-      println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-      println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-      println("virtual loopback device is installed.");
-      println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-      println("hardware device index from MidiBus.list(), then update the indices above.");
-      e.printStackTrace();
+      midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
+    } else {
+      midiBus = safeMidiBus(midiInputIndex, -1);
+      midiReady = (midiBus != null);
+      if (!midiReady) {
+        midiInitFailed = true;
+        midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
+      }
     }
   }
 
@@ -78,6 +78,9 @@ void draw() {
     // MIDI isn't online yet: keep the window alive, stay black, show HUD text,
     // and skip every video/effect touchpoint so nothing tries to read null pixels.
     drawHud();
+    if (!midiPortsValid) {
+      drawNoValidMidiBanner();
+    }
     syphonServer.sendScreen();
     return;
   }
@@ -239,6 +242,19 @@ void drawHud() {
       text(midiStatusMessage, 10, 140);
     }
   }
+}
+
+void drawNoValidMidiBanner() {
+  // Loud banner so you don't miss that there are zero usable MIDI ports.
+  pushStyle();
+  fill(160, 0, 0, 220);
+  noStroke();
+  rect(0, 0, width, 36);
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(18);
+  text("No valid MIDI ports detected", 14, 8);
+  popStyle();
 }
 
 void drawMidiMissingOverlay() {
