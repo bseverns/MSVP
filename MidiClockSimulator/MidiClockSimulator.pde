@@ -1,10 +1,16 @@
 import themidibus.*;
+import javax.sound.midi.*;
 
 MidiBus midiOut;
 boolean midiReady = false;
 boolean midiInitFailed = false;
 boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
+MidiDevice midiClockDevice;
+Receiver midiClockReceiver;
+boolean midiClockReady = false;
+boolean midiClockInitFailed = false;
+String midiClockStatusMessage = "";
 
 float bpm = 120.0;      // simulated BPM
 int   channel = 0;      // MIDI channel for CCs (0-based: 0 == Ch1)
@@ -40,6 +46,7 @@ void setup() {
     midiStatusMessage = "MIDI WARNING: no safe output found (\"Real Time Sequencer\" is ignored).";
   } else {
     boolean midiInitialized = false;
+    String selectedOutputLabel = null;
     String[] outputs = MidiBus.availableOutputs();
     for (int i = 0; i < midiOutputCandidates.length; i++) {
       int midiOutputIndex = midiOutputCandidates[i];
@@ -50,6 +57,7 @@ void setup() {
         midiOut = new MidiBus(this, -1, midiOutputIndex);
         midiReady = true;
         midiInitialized = true;
+        selectedOutputLabel = outputLabel;
         break;
       } catch (Throwable e) {
         println("MIDI init failed for output " + outputLabel + ".");
@@ -69,6 +77,11 @@ void setup() {
       midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
       return;
     }
+    midiClockReady = initMidiClockReceiver(selectedOutputLabel);
+    if (!midiClockReady) {
+      midiClockInitFailed = true;
+      midiClockStatusMessage = "MIDI WARNING: clock output init failed; CCs still send.";
+    }
   }
   }
 
@@ -83,6 +96,12 @@ void draw() {
   text("Ticks per beat: " + ticksPerBeatSim, 10, 50);
   text("Sending MIDI Clock + CC on channel " + (channel + 1), 10, 70);
   text("Output device index is set in setup()", 10, 90);
+  if (midiReady && !midiClockReady) {
+    text("MIDI Clock: not sending (see console)", 10, 110);
+    if (midiClockStatusMessage != null && !midiClockStatusMessage.equals("")) {
+      text(midiClockStatusMessage, 10, 130);
+    }
+  }
   if (midiDeviceListsEmpty) {
     drawNoValidMidiBanner();
   }
@@ -145,10 +164,25 @@ void computeMsPerTick() {
 }
 
 void sendClockTick() {
-  if (!midiReady || midiOut == null) return;
-  byte[] msg = new byte[1];
-  msg[0] = (byte)0xF8;  // MIDI Clock
-  midiOut.sendMessage(msg);
+  if (!midiReady) return;
+  if (!midiClockReady || midiClockReceiver == null) return;
+  try {
+    ShortMessage clock = new ShortMessage();
+    clock.setMessage(ShortMessage.TIMING_CLOCK);
+    midiClockReceiver.send(clock, -1);
+  } catch (InvalidMidiDataException e) {
+    println("MIDI clock send failed: invalid data for timing clock.");
+    e.printStackTrace();
+    midiClockReady = false;
+    midiClockInitFailed = true;
+    midiClockStatusMessage = "MIDI WARNING: clock send failed; disabling clock.";
+  } catch (IllegalStateException e) {
+    println("MIDI clock send failed: receiver closed.");
+    e.printStackTrace();
+    midiClockReady = false;
+    midiClockInitFailed = true;
+    midiClockStatusMessage = "MIDI WARNING: clock receiver closed; disabling clock.";
+  }
 }
 
 void sendCCLFO() {
@@ -158,4 +192,69 @@ void sendCCLFO() {
   float lfo = 0.5 + 0.5 * sin(TWO_PI * lfoSpeed * t);
   int value = int(lfo * 127.0);
   midiOut.sendControllerChange(channel, ccNumber, value);
+}
+
+boolean initMidiClockReceiver(String outputLabel) {
+  if (outputLabel == null) {
+    println("MIDI WARNING: clock receiver init skipped (no output label).");
+    return false;
+  }
+  String trimmedLabel = outputLabel.trim();
+  if (trimmedLabel.length() == 0) {
+    println("MIDI WARNING: clock receiver init skipped (blank output label).");
+    return false;
+  }
+  String normalizedLabel = trimmedLabel.toLowerCase();
+  MidiDevice.Info[] infos = MidiSystem.getMidiDeviceInfo();
+  for (int i = 0; i < infos.length; i++) {
+    MidiDevice.Info info = infos[i];
+    if (!midiDeviceMatchesLabel(info, normalizedLabel)) {
+      continue;
+    }
+    try {
+      MidiDevice device = MidiSystem.getMidiDevice(info);
+      if (device.getMaxReceivers() == 0) {
+        continue;
+      }
+      device.open();
+      Receiver receiver = device.getReceiver();
+      midiClockDevice = device;
+      midiClockReceiver = receiver;
+      println("MIDI clock receiver opened on \"" + outputLabel + "\".");
+      return true;
+    } catch (MidiUnavailableException e) {
+      println("MIDI WARNING: clock receiver init failed for \"" + outputLabel + "\".");
+      e.printStackTrace();
+    }
+  }
+  println("MIDI WARNING: no clock-capable receiver found for \"" + outputLabel + "\".");
+  return false;
+}
+
+boolean midiDeviceMatchesLabel(MidiDevice.Info info, String normalizedLabel) {
+  if (info == null) return false;
+  String name = info.getName();
+  String description = info.getDescription();
+  String combined = ((name == null ? "" : name) + " " + (description == null ? "" : description)).trim();
+  if (combined.length() == 0) return false;
+  String normalizedCombined = combined.toLowerCase();
+  if (normalizedCombined.indexOf(normalizedLabel) >= 0) return true;
+  if (normalizedLabel.indexOf(normalizedCombined) >= 0) return true;
+  if (name != null && name.toLowerCase().indexOf(normalizedLabel) >= 0) return true;
+  return false;
+}
+
+void dispose() {
+  closeMidiClockReceiver();
+}
+
+void closeMidiClockReceiver() {
+  if (midiClockReceiver != null) {
+    midiClockReceiver.close();
+    midiClockReceiver = null;
+  }
+  if (midiClockDevice != null && midiClockDevice.isOpen()) {
+    midiClockDevice.close();
+    midiClockDevice = null;
+  }
 }
