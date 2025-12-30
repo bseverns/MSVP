@@ -8,7 +8,7 @@ final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Ro
 
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
-    if (!hasNonEmptyMidiDeviceLists()) {
+    if (!hasRequestedMidiPorts(inputIndex, outputIndex)) {
       println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
       return null;
     }
@@ -24,37 +24,56 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   }
 }
 
-boolean hasNonEmptyMidiDeviceLists() {
-  String[] inputs = MidiBus.availableInputs();
-  String[] outputs = MidiBus.availableOutputs();
-  boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
-  boolean outputsHaveNames = hasNonEmptyMidiNames(outputs);
-  if (!inputsHaveNames || !outputsHaveNames) {
+boolean hasRequestedMidiPorts(int inputIndex, int outputIndex) {
+  boolean needsInput = inputIndex >= 0;
+  boolean needsOutput = outputIndex >= 0;
+
+  if (needsInput && !hasUsableMidiInputs()) {
     println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return false;
   }
+
+  if (needsOutput && !hasUsableMidiOutputs()) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
+    return false;
+  }
+
   return true;
 }
 
-boolean hasNonEmptyMidiNames(String[] ports) {
+boolean hasUsableMidiInputs() {
+  return hasUsableMidiNames(MidiBus.availableInputs());
+}
+
+boolean hasUsableMidiOutputs() {
+  return hasUsableMidiNames(MidiBus.availableOutputs());
+}
+
+boolean hasUsableMidiNames(String[] ports) {
   if (ports == null || ports.length == 0) {
     return false;
   }
 
   for (int i = 0; i < ports.length; i++) {
     String portName = ports[i];
-    if (portName == null) continue;
-    String trimmed = portName.trim();
-    if (trimmed.length() == 0) continue;
+    if (!isValidMidiPortName(portName)) continue;
     return true;
   }
 
   return false;
 }
 
+boolean isValidMidiPortName(String portName) {
+  if (portName == null) return false;
+  String trimmed = portName.trim();
+  if (trimmed.length() == 0) return false;
+  String normalized = trimmed.toLowerCase();
+  return normalized.indexOf("real time sequencer") < 0;
+}
+
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
-  if (!hasNonEmptyMidiNames(inputs)) {
+  if (!hasUsableMidiNames(inputs)) {
     println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
@@ -62,13 +81,8 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   int validCount = 0;
   for (int i = 0; i < inputs.length; i++) {
     String inputName = inputs[i];
-    if (inputName == null) continue;
-    String trimmed = inputName.trim();
-    if (trimmed.length() == 0) continue;
-    String normalized = trimmed.toLowerCase();
-    if (normalized.indexOf("real time sequencer") >= 0) {
-      continue;
-    }
+    if (!isValidMidiPortName(inputName)) continue;
+    String normalized = inputName.trim().toLowerCase();
     validCount++;
     for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
       String hint = nameHints[hintIndex];
@@ -81,14 +95,8 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 
   if (fallbackIndex >= 0 && fallbackIndex < inputs.length) {
     String fallbackName = inputs[fallbackIndex];
-    if (fallbackName != null) {
-      String trimmed = fallbackName.trim();
-      if (trimmed.length() > 0) {
-        String normalized = trimmed.toLowerCase();
-        if (normalized.indexOf("real time sequencer") < 0) {
-          return fallbackIndex;
-        }
-      }
+    if (isValidMidiPortName(fallbackName)) {
+      return fallbackIndex;
     }
   }
 
@@ -100,7 +108,7 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
-  if (!hasNonEmptyMidiNames(outputs)) {
+  if (!hasUsableMidiNames(outputs)) {
     println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
@@ -108,13 +116,8 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   int validCount = 0;
   for (int i = 0; i < outputs.length; i++) {
     String outputName = outputs[i];
-    if (outputName == null) continue;
-    String trimmed = outputName.trim();
-    if (trimmed.length() == 0) continue;
-    String normalized = trimmed.toLowerCase();
-    if (normalized.indexOf("real time sequencer") >= 0) {
-      continue;
-    }
+    if (!isValidMidiPortName(outputName)) continue;
+    String normalized = outputName.trim().toLowerCase();
     validCount++;
     for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
       String hint = nameHints[hintIndex];
@@ -127,14 +130,8 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
 
   if (fallbackIndex >= 0 && fallbackIndex < outputs.length) {
     String fallbackName = outputs[fallbackIndex];
-    if (fallbackName != null) {
-      String trimmed = fallbackName.trim();
-      if (trimmed.length() > 0) {
-        String normalized = trimmed.toLowerCase();
-        if (normalized.indexOf("real time sequencer") < 0) {
-          return fallbackIndex;
-        }
-      }
+    if (isValidMidiPortName(fallbackName)) {
+      return fallbackIndex;
     }
   }
 
