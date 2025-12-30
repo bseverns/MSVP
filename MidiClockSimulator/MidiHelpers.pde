@@ -4,10 +4,12 @@
 // If you change logic here, copy the same edits into the other MidiHelpers.pde files
 // to keep every sketch behaving identically.
 
+final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Rosetta/MIDI bug?)";
+
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
-    if (!hasValidMidiPorts()) {
-      println("No valid MIDI ports detected");
+    if (!hasNonEmptyMidiDeviceLists()) {
+      println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
       return null;
     }
     return new MidiBus(this, inputIndex, outputIndex);
@@ -22,31 +24,19 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   }
 }
 
-boolean hasValidMidiPorts() {
-  // We need BOTH input + output lists to be present and contain at least one real
-  // device name that isn't Java's "Real Time Sequencer" trap.
+boolean hasNonEmptyMidiDeviceLists() {
   String[] inputs = MidiBus.availableInputs();
   String[] outputs = MidiBus.availableOutputs();
-
-  boolean hasReadableInputs = hasNonEmptyMidiPortNames(inputs);
-  boolean hasReadableOutputs = hasNonEmptyMidiPortNames(outputs);
-  if (!hasReadableInputs || !hasReadableOutputs) {
-    println("No valid MIDI ports detected");
+  boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
+  boolean outputsHaveNames = hasNonEmptyMidiNames(outputs);
+  if (!inputsHaveNames || !outputsHaveNames) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return false;
   }
-
-  boolean inputsValid = containsRealMidiPort(inputs);
-  boolean outputsValid = containsRealMidiPort(outputs);
-
-  if (!inputsValid || !outputsValid) {
-    println("No valid MIDI ports detected. Inputs valid: " + inputsValid + ", outputs valid: " + outputsValid);
-    return false;
-  }
-
   return true;
 }
 
-boolean hasNonEmptyMidiPortNames(String[] ports) {
+boolean hasNonEmptyMidiNames(String[] ports) {
   if (ports == null || ports.length == 0) {
     return false;
   }
@@ -56,23 +46,6 @@ boolean hasNonEmptyMidiPortNames(String[] ports) {
     if (portName == null) continue;
     String trimmed = portName.trim();
     if (trimmed.length() == 0) continue;
-    return true;
-  }
-
-  return false;
-}
-
-boolean containsRealMidiPort(String[] ports) {
-  if (ports == null || ports.length == 0) {
-    return false;
-  }
-
-  for (int i = 0; i < ports.length; i++) {
-    String portName = ports[i];
-    if (portName == null) continue;
-    String trimmed = portName.trim();
-    if (trimmed.length() == 0) continue;
-    if (trimmed.equalsIgnoreCase("Real Time Sequencer")) continue;
     return true;
   }
 
@@ -81,8 +54,8 @@ boolean containsRealMidiPort(String[] ports) {
 
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
-  if (inputs == null || inputs.length == 0) {
-    println("No usable MIDI input ports detected. Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
+  if (!hasNonEmptyMidiNames(inputs)) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
 
@@ -127,8 +100,8 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
-  if (outputs == null || outputs.length == 0) {
-    println("No usable MIDI output ports detected. Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
+  if (!hasNonEmptyMidiNames(outputs)) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
 

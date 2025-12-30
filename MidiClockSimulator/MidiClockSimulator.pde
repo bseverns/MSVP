@@ -3,7 +3,7 @@ import themidibus.*;
 MidiBus midiOut;
 boolean midiReady = false;
 boolean midiInitFailed = false;
-boolean midiPortsValid = true;
+boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
 
 float bpm = 120.0;      // simulated BPM
@@ -25,13 +25,13 @@ void setup() {
   computeMsPerTick();
 
   MidiBus.list();
-  // Validate outputs before we even attempt MidiBus init.
-  // (Input is -1 on purpose, so output health is the only gatekeeper here.)
-  midiPortsValid = containsRealMidiPort(MidiBus.availableOutputs());
-  if (!midiPortsValid) {
+  // Validate both input + output lists before we even attempt MidiBus init.
+  if (!hasNonEmptyMidiDeviceLists()) {
     midiReady = false;
-    midiStatusMessage = "No valid MIDI output ports detected. Skipping MidiBus init.";
-  } else {
+    midiDeviceListsEmpty = true;
+    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+  }
+  if (!midiDeviceListsEmpty) {
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
   int midiOutputIndex = findMidiOutputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
@@ -69,7 +69,7 @@ void draw() {
   text("Ticks per beat: " + ticksPerBeatSim, 10, 50);
   text("Sending MIDI Clock + CC on channel " + (channel + 1), 10, 70);
   text("Output device index is set in setup()", 10, 90);
-  if (!midiPortsValid) {
+  if (midiDeviceListsEmpty) {
     drawNoValidMidiBanner();
   }
   if (midiInitFailed) {
@@ -105,7 +105,10 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(14);
-  text("No valid MIDI ports detected", 10, 6);
+  String bannerMessage = midiDeviceListsEmpty
+    ? NO_VALID_MIDI_DEVICES_MESSAGE
+    : "No valid MIDI ports detected";
+  text(bannerMessage, 10, 6);
   popStyle();
 }
 
