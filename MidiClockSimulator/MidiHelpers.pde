@@ -52,6 +52,79 @@ boolean hasNonEmptyMidiNames(String[] ports) {
   return false;
 }
 
+boolean isRealTimeSequencerName(String portName) {
+  if (portName == null) return false;
+  String trimmed = portName.trim();
+  if (trimmed.length() == 0) return false;
+  String normalized = trimmed.toLowerCase();
+  return normalized.indexOf("real time sequencer") >= 0;
+}
+
+int[] buildMidiCandidateIndices(String[] ports, String[] nameHints, int fallbackIndex) {
+  if (ports == null || ports.length == 0) {
+    return new int[0];
+  }
+
+  ArrayList<Integer> candidates = new ArrayList<Integer>();
+
+  if (nameHints != null) {
+    for (int hintIndex = 0; hintIndex < nameHints.length; hintIndex++) {
+      String hint = nameHints[hintIndex];
+      if (hint == null) continue;
+      String hintLower = hint.toLowerCase();
+      for (int i = 0; i < ports.length; i++) {
+        String portName = ports[i];
+        if (portName == null) continue;
+        String trimmed = portName.trim();
+        if (trimmed.length() == 0) continue;
+        if (isRealTimeSequencerName(trimmed)) continue;
+        if (trimmed.toLowerCase().indexOf(hintLower) >= 0) {
+          if (!candidates.contains(i)) {
+            candidates.add(i);
+          }
+        }
+      }
+    }
+  }
+
+  if (fallbackIndex >= 0 && fallbackIndex < ports.length) {
+    String fallbackName = ports[fallbackIndex];
+    if (fallbackName != null) {
+      String trimmed = fallbackName.trim();
+      if (trimmed.length() > 0 && !isRealTimeSequencerName(trimmed)) {
+        if (!candidates.contains(fallbackIndex)) {
+          candidates.add(fallbackIndex);
+        }
+      }
+    }
+  }
+
+  for (int i = 0; i < ports.length; i++) {
+    String portName = ports[i];
+    if (portName == null) continue;
+    String trimmed = portName.trim();
+    if (trimmed.length() == 0) continue;
+    if (isRealTimeSequencerName(trimmed)) continue;
+    if (!candidates.contains(i)) {
+      candidates.add(i);
+    }
+  }
+
+  int[] result = new int[candidates.size()];
+  for (int i = 0; i < candidates.size(); i++) {
+    result[i] = candidates.get(i);
+  }
+  return result;
+}
+
+int[] buildMidiInputCandidates(String[] nameHints, int fallbackIndex) {
+  return buildMidiCandidateIndices(MidiBus.availableInputs(), nameHints, fallbackIndex);
+}
+
+int[] buildMidiOutputCandidates(String[] nameHints, int fallbackIndex) {
+  return buildMidiCandidateIndices(MidiBus.availableOutputs(), nameHints, fallbackIndex);
+}
+
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
   if (!hasNonEmptyMidiNames(inputs)) {

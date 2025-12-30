@@ -28,25 +28,39 @@ void setup() {
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
     return;
   }
-  int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  if (midiInputIndex == -1) {
+  int[] midiInputCandidates = buildMidiInputCandidates(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+  if (midiInputCandidates.length == 0) {
     midiReady = false;
     midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
   } else {
-    try {
-      midiBus = new MidiBus(this, midiInputIndex, -1);
-      midiReady = true;
-    } catch (Throwable e) {
+    boolean midiInitialized = false;
+    String[] inputs = MidiBus.availableInputs();
+    for (int i = 0; i < midiInputCandidates.length; i++) {
+      int midiInputIndex = midiInputCandidates[i];
+      String inputLabel = (inputs != null && midiInputIndex >= 0 && midiInputIndex < inputs.length)
+        ? inputs[midiInputIndex]
+        : ("index " + midiInputIndex);
+      try {
+        midiBus = new MidiBus(this, midiInputIndex, -1);
+        midiReady = true;
+        midiInitialized = true;
+        break;
+      } catch (Throwable e) {
+        println("MIDI init failed for input " + inputLabel + ".");
+        println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+        println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+        println("virtual loopback device is installed.");
+        println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+        println("hardware device index from MidiBus.list(), then update the indices above.");
+        e.printStackTrace();
+      }
+    }
+
+    if (!midiInitialized) {
       midiBus = null;
       midiReady = false;
       midiInitFailed = true;
       midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
-      println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-      println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-      println("virtual loopback device is installed.");
-      println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-      println("hardware device index from MidiBus.list(), then update the indices above.");
-      e.printStackTrace();
       return;
     }
   }
