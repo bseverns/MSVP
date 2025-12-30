@@ -6,6 +6,10 @@
 
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
+    if (!hasValidMidiPorts()) {
+      println("No valid MIDI ports detected. Skipping MidiBus init.");
+      return null;
+    }
     return new MidiBus(this, inputIndex, outputIndex);
   } catch (Throwable e) {
     println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
@@ -16,6 +20,38 @@ MidiBus safeMidiBus(int inputIndex, int outputIndex) {
     e.printStackTrace();
     return null;
   }
+}
+
+boolean hasValidMidiPorts() {
+  String[] inputs = MidiBus.availableInputs();
+  String[] outputs = MidiBus.availableOutputs();
+
+  boolean inputsValid = containsRealMidiPort(inputs);
+  boolean outputsValid = containsRealMidiPort(outputs);
+
+  if (!inputsValid || !outputsValid) {
+    println("No valid MIDI ports detected. Inputs valid: " + inputsValid + ", outputs valid: " + outputsValid);
+    return false;
+  }
+
+  return true;
+}
+
+boolean containsRealMidiPort(String[] ports) {
+  if (ports == null || ports.length == 0) {
+    return false;
+  }
+
+  for (int i = 0; i < ports.length; i++) {
+    String portName = ports[i];
+    if (portName == null) continue;
+    String trimmed = portName.trim();
+    if (trimmed.length() == 0) continue;
+    if (trimmed.equalsIgnoreCase("Real Time Sequencer")) continue;
+    return true;
+  }
+
+  return false;
 }
 
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {

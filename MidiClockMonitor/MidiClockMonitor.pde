@@ -3,6 +3,7 @@ import themidibus.*;
 MidiBus midiBus;
 boolean midiReady = false;
 boolean midiInitFailed = false;
+boolean midiPortsValid = true;
 String midiStatusMessage = "";
 
 int   ticksPerBeatMon   = 24;
@@ -20,6 +21,13 @@ void setup() {
   textAlign(LEFT, TOP);
 
   MidiBus.list();
+  // Validate both input + output lists before we even attempt MidiBus init.
+  midiPortsValid = hasValidMidiPorts();
+  if (!midiPortsValid) {
+    midiReady = false;
+    midiStatusMessage = "No valid MIDI ports detected";
+    return;
+  }
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
   if (midiInputIndex == -1) {
     midiReady = false;
@@ -41,6 +49,9 @@ void draw() {
   text("Beat: " + beatCountMon, 10, 40);
   text("BPM:  " + nf(bpmMon, 0, 2), 10, 70);
   text("Watch console for detailed logs.", 10, 110);
+  if (!midiPortsValid) {
+    drawNoValidMidiBanner();
+  }
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 140);
     if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
@@ -50,6 +61,19 @@ void draw() {
       text("MIDI init failed; see console", 10, 180);
     }
   }
+}
+
+void drawNoValidMidiBanner() {
+  // Loud banner so you don't miss that there are zero usable MIDI ports.
+  pushStyle();
+  fill(160, 0, 0);
+  noStroke();
+  rect(0, 0, width, 28);
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(14);
+  text("No valid MIDI ports detected", 10, 6);
+  popStyle();
 }
 
 void rawMidi(byte[] data) {
