@@ -38,51 +38,51 @@ void setup() {
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
   }
   if (!midiDeviceListsEmpty) {
-  // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
-  // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
-  int[] midiOutputCandidates = buildMidiOutputCandidates(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
-  if (midiOutputCandidates.length == 0) {
-    midiReady = false;
-    midiStatusMessage = "MIDI WARNING: no safe output found (\"Real Time Sequencer\" is ignored).";
-  } else {
-    boolean midiInitialized = false;
-    String selectedOutputLabel = null;
-    String[] outputs = MidiBus.availableOutputs();
-    for (int i = 0; i < midiOutputCandidates.length; i++) {
-      int midiOutputIndex = midiOutputCandidates[i];
-      String outputLabel = (outputs != null && midiOutputIndex >= 0 && midiOutputIndex < outputs.length)
-        ? outputs[midiOutputIndex]
-        : ("index " + midiOutputIndex);
-      try {
-        midiOut = new MidiBus(this, -1, midiOutputIndex);
-        midiReady = true;
-        midiInitialized = true;
-        selectedOutputLabel = outputLabel;
-        break;
-      } catch (Throwable e) {
-        println("MIDI init failed for output " + outputLabel + ".");
-        println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-        println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-        println("virtual loopback device is installed.");
-        println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-        println("hardware device index from MidiBus.list(), then update the indices above.");
-        e.printStackTrace();
+    // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
+    // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
+    int[] midiOutputCandidates = buildMidiOutputCandidates(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+    if (midiOutputCandidates.length == 0) {
+      midiReady = false;
+      midiStatusMessage = "MIDI WARNING: no safe output found (\"Real Time Sequencer\" is ignored).";
+    } else {
+      boolean midiInitialized = false;
+      String selectedOutputLabel = null;
+      String[] outputs = MidiBus.availableOutputs();
+      for (int i = 0; i < midiOutputCandidates.length; i++) {
+        int midiOutputIndex = midiOutputCandidates[i];
+        String outputLabel = (outputs != null && midiOutputIndex >= 0 && midiOutputIndex < outputs.length)
+          ? outputs[midiOutputIndex]
+          : ("index " + midiOutputIndex);
+        try {
+          midiOut = new MidiBus(this, -1, midiOutputIndex);
+          midiReady = true;
+          midiInitialized = true;
+          selectedOutputLabel = outputLabel;
+          break;
+        } catch (Throwable e) {
+          println("MIDI init failed for output " + outputLabel + ".");
+          println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+          println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+          println("virtual loopback device is installed.");
+          println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+          println("hardware device index from MidiBus.list(), then update the indices above.");
+          e.printStackTrace();
+        }
+      }
+
+      if (!midiInitialized) {
+        midiOut = null;
+        midiReady = false;
+        midiInitFailed = true;
+        midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
+        return;
+      }
+      midiClockReady = initMidiClockReceiver(selectedOutputLabel);
+      if (!midiClockReady) {
+        midiClockInitFailed = true;
+        midiClockStatusMessage = "MIDI WARNING: clock output init failed; CCs still send.";
       }
     }
-
-    if (!midiInitialized) {
-      midiOut = null;
-      midiReady = false;
-      midiInitFailed = true;
-      midiStatusMessage = "MIDI ERROR: output init failed. Check console and device list.";
-      return;
-    }
-    midiClockReady = initMidiClockReceiver(selectedOutputLabel);
-    if (!midiClockReady) {
-      midiClockInitFailed = true;
-      midiClockStatusMessage = "MIDI WARNING: clock output init failed; CCs still send.";
-    }
-  }
   }
 
   lastTickMs = millis();
