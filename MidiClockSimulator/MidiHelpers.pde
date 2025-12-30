@@ -7,7 +7,7 @@
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
     if (!hasValidMidiPorts()) {
-      println("No valid MIDI ports detected. Skipping MidiBus init.");
+      println("No valid MIDI ports detected");
       return null;
     }
     return new MidiBus(this, inputIndex, outputIndex);
@@ -28,6 +28,13 @@ boolean hasValidMidiPorts() {
   String[] inputs = MidiBus.availableInputs();
   String[] outputs = MidiBus.availableOutputs();
 
+  boolean hasReadableInputs = hasNonEmptyMidiPortNames(inputs);
+  boolean hasReadableOutputs = hasNonEmptyMidiPortNames(outputs);
+  if (!hasReadableInputs || !hasReadableOutputs) {
+    println("No valid MIDI ports detected");
+    return false;
+  }
+
   boolean inputsValid = containsRealMidiPort(inputs);
   boolean outputsValid = containsRealMidiPort(outputs);
 
@@ -37,6 +44,22 @@ boolean hasValidMidiPorts() {
   }
 
   return true;
+}
+
+boolean hasNonEmptyMidiPortNames(String[] ports) {
+  if (ports == null || ports.length == 0) {
+    return false;
+  }
+
+  for (int i = 0; i < ports.length; i++) {
+    String portName = ports[i];
+    if (portName == null) continue;
+    String trimmed = portName.trim();
+    if (trimmed.length() == 0) continue;
+    return true;
+  }
+
+  return false;
 }
 
 boolean containsRealMidiPort(String[] ports) {
