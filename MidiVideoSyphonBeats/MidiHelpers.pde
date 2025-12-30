@@ -4,10 +4,12 @@
 // If you change logic here, copy the same edits into the other MidiHelpers.pde files
 // to keep every sketch behaving identically.
 
+final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Rosetta/MIDI bug?)";
+
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
     if (!hasValidMidiPorts()) {
-      println("No valid MIDI ports detected. Skipping MidiBus init.");
+      println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
       return null;
     }
     return new MidiBus(this, inputIndex, outputIndex);
@@ -28,6 +30,13 @@ boolean hasValidMidiPorts() {
   String[] inputs = MidiBus.availableInputs();
   String[] outputs = MidiBus.availableOutputs();
 
+  boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
+  boolean outputsHaveNames = hasNonEmptyMidiNames(outputs);
+  if (!inputsHaveNames || !outputsHaveNames) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
+    return false;
+  }
+
   boolean inputsValid = containsRealMidiPort(inputs);
   boolean outputsValid = containsRealMidiPort(outputs);
 
@@ -37,6 +46,22 @@ boolean hasValidMidiPorts() {
   }
 
   return true;
+}
+
+boolean hasNonEmptyMidiNames(String[] ports) {
+  if (ports == null || ports.length == 0) {
+    return false;
+  }
+
+  for (int i = 0; i < ports.length; i++) {
+    String portName = ports[i];
+    if (portName == null) continue;
+    String trimmed = portName.trim();
+    if (trimmed.length() == 0) continue;
+    return true;
+  }
+
+  return false;
 }
 
 boolean containsRealMidiPort(String[] ports) {
@@ -58,8 +83,8 @@ boolean containsRealMidiPort(String[] ports) {
 
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
-  if (inputs == null || inputs.length == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+  if (!hasNonEmptyMidiNames(inputs)) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
 
@@ -97,15 +122,15 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
   }
   return -1;
 }
 
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
-  if (outputs == null || outputs.length == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+  if (!hasNonEmptyMidiNames(outputs)) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
     return -1;
   }
 
@@ -143,7 +168,7 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No valid MIDI ports detected. Install IAC/loopMIDI.");
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
   }
   return -1;
 }

@@ -25,7 +25,7 @@ void setup() {
   midiPortsValid = hasValidMidiPorts();
   if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = "No valid MIDI ports detected";
+    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
     return;
   }
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
@@ -81,7 +81,7 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(14);
-  text("No valid MIDI ports detected", 10, 6);
+  text(NO_VALID_MIDI_DEVICES_MESSAGE, 10, 6);
   popStyle();
 }
 

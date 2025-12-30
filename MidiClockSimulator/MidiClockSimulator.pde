@@ -29,7 +29,7 @@ void setup() {
   midiPortsValid = hasValidMidiPorts();
   if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = "No valid MIDI ports detected";
+    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
   } else {
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
@@ -100,7 +100,7 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(14);
-  text("No valid MIDI ports detected", 10, 6);
+  text(NO_VALID_MIDI_DEVICES_MESSAGE, 10, 6);
   popStyle();
 }
 
