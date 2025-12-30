@@ -52,6 +52,7 @@ void setup() {
       println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
       println("hardware device index from MidiBus.list(), then update the indices above.");
       e.printStackTrace();
+      return;
     }
   }
   }
@@ -69,6 +70,9 @@ void draw() {
   text("Output device index is set in setup()", 10, 90);
   if (!midiPortsValid) {
     drawNoValidMidiBanner();
+  }
+  if (midiInitFailed) {
+    drawMidiInitFailedBanner();
   }
   if (!midiReady) {
     text("MIDI: not connected (see console)", 10, 120);
@@ -101,6 +105,19 @@ void drawNoValidMidiBanner() {
   textAlign(LEFT, TOP);
   textSize(14);
   text("No valid MIDI ports detected", 10, 6);
+  popStyle();
+}
+
+void drawMidiInitFailedBanner() {
+  // Big red heads-up: the MIDI init threw, so the sim is idling on purpose.
+  pushStyle();
+  fill(180, 40, 0);
+  noStroke();
+  rect(0, 28, width, 28);
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(14);
+  text("MIDI init failed (see console)", 10, 34);
   popStyle();
 }
 
