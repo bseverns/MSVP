@@ -8,8 +8,12 @@ final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Ro
 
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
-    if (!hasValidMidiPorts()) {
+    if (!hasNonEmptyMidiDeviceLists()) {
       println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
+      return null;
+    }
+    if (!hasValidMidiPorts()) {
+      println("No valid MIDI ports detected. Skipping MidiBus init.");
       return null;
     }
     return new MidiBus(this, inputIndex, outputIndex);
@@ -30,13 +34,6 @@ boolean hasValidMidiPorts() {
   String[] inputs = MidiBus.availableInputs();
   String[] outputs = MidiBus.availableOutputs();
 
-  boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
-  boolean outputsHaveNames = hasNonEmptyMidiNames(outputs);
-  if (!inputsHaveNames || !outputsHaveNames) {
-    println(NO_VALID_MIDI_DEVICES_MESSAGE);
-    return false;
-  }
-
   boolean inputsValid = containsRealMidiPort(inputs);
   boolean outputsValid = containsRealMidiPort(outputs);
 
@@ -45,6 +42,18 @@ boolean hasValidMidiPorts() {
     return false;
   }
 
+  return true;
+}
+
+boolean hasNonEmptyMidiDeviceLists() {
+  String[] inputs = MidiBus.availableInputs();
+  String[] outputs = MidiBus.availableOutputs();
+  boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
+  boolean outputsHaveNames = hasNonEmptyMidiNames(outputs);
+  if (!inputsHaveNames || !outputsHaveNames) {
+    println(NO_VALID_MIDI_DEVICES_MESSAGE);
+    return false;
+  }
   return true;
 }
 

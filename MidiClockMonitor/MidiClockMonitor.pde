@@ -22,10 +22,16 @@ void setup() {
 
   MidiBus.list();
   // Validate both input + output lists before we even attempt MidiBus init.
+  if (!hasNonEmptyMidiDeviceLists()) {
+    midiReady = false;
+    midiPortsValid = false;
+    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    return;
+  }
   midiPortsValid = hasValidMidiPorts();
   if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    midiStatusMessage = "No valid MIDI ports detected";
     return;
   }
   int midiInputIndex = findMidiInputIndex(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
@@ -81,7 +87,10 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(14);
-  text(NO_VALID_MIDI_DEVICES_MESSAGE, 10, 6);
+  String bannerMessage = (midiStatusMessage != null && !midiStatusMessage.equals(""))
+    ? midiStatusMessage
+    : "No valid MIDI ports detected";
+  text(bannerMessage, 10, 6);
   popStyle();
 }
 

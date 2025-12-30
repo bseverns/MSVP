@@ -26,10 +26,18 @@ void setup() {
 
   MidiBus.list();
   // Validate both input + output lists before we even attempt MidiBus init.
-  midiPortsValid = hasValidMidiPorts();
+  if (!hasNonEmptyMidiDeviceLists()) {
+    midiReady = false;
+    midiPortsValid = false;
+    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+  } else {
+    midiPortsValid = hasValidMidiPorts();
+  }
   if (!midiPortsValid) {
     midiReady = false;
-    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    if (midiStatusMessage == null || midiStatusMessage.equals("")) {
+      midiStatusMessage = "No valid MIDI ports detected";
+    }
   } else {
   // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
   // Example: midiOut = new MidiBus(this, -1, 0);  // out: device #0
@@ -100,7 +108,10 @@ void drawNoValidMidiBanner() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(14);
-  text(NO_VALID_MIDI_DEVICES_MESSAGE, 10, 6);
+  String bannerMessage = (midiStatusMessage != null && !midiStatusMessage.equals(""))
+    ? midiStatusMessage
+    : "No valid MIDI ports detected";
+  text(bannerMessage, 10, 6);
   popStyle();
 }
 
