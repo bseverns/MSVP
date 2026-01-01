@@ -212,14 +212,15 @@ boolean initMidiClockReceiver(String outputLabel) {
       continue;
     }
     try {
-      MidiDevice device = MidiSystem.getMidiDevice(info);
-      if (device.getMaxReceivers() == 0) {
+      // Use an explicit name so the Processing preprocessor doesn't get confused.
+      MidiDevice clockDevice = MidiSystem.getMidiDevice(info);
+      if (clockDevice.getMaxReceivers() == 0) {
         continue;
       }
-      device.open();
-      Receiver receiver = device.getReceiver();
-      midiClockDevice = device;
-      midiClockReceiver = receiver;
+      clockDevice.open();
+      Receiver clockReceiver = clockDevice.getReceiver();
+      midiClockDevice = clockDevice;
+      midiClockReceiver = clockReceiver;
       println("MIDI clock receiver opened on \"" + outputLabel + "\".");
       return true;
     } catch (MidiUnavailableException e) {
