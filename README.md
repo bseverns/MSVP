@@ -28,6 +28,8 @@ videoProcessing-midi-sync/
     MidiClockMonitor.pde
   MidiClockSimulator/
     MidiClockSimulator.pde
+  OscControlSimulator/
+    OscControlSimulator.pde
   demos/
     README.md
     SyphonClientTest/
@@ -47,6 +49,11 @@ Syphon
     ↓
 VJ app
 ```
+
+## Rig-tuned quickstart (live-rig operator sheet)
+
+If you want the rig-tuned variant (interop contract, macro/analysis lanes, scene presets),
+start here: `docs/rig-tuned-quickstart.md`.
 
 ### Wiring recipes (copy/paste this into your muscle memory)
 

@@ -1,6 +1,8 @@
 import processing.video.*;
 import codeanticode.syphon.*;
 import themidibus.*;
+import oscP5.*;
+import netP5.*;
 
 Movie video;
 SyphonServer syphonServer;
@@ -9,6 +11,21 @@ boolean midiReady = false;
 boolean midiInitFailed = false;
 boolean midiDeviceListsEmpty = false;
 String midiStatusMessage = "";
+String midiSelectedInputName = "";
+boolean midiInputFromInterop = false;
+boolean showStatusOverlay = true;
+int lastCcChannel = -1;
+int lastCcNumber = -1;
+int lastCcValue = -1;
+int stateOscIntervalMs = 100;
+long lastStateOscMs = -1;
+long lastStateBeat = -1;
+
+OscP5 oscP5;
+NetAddress oscTarget;
+int oscListenPort;
+String oscTargetHost;
+int oscTargetPort;
 
 int currentLineSize;
 float currentStrokeWeight;
@@ -27,6 +44,10 @@ int   tickCounter  = 0;
 long  lastBeatTimeMs = -1;
 long  beatCount = 0;
 long  lastBeatSeenInDraw = -1;
+boolean isPlaying = true;
+boolean transportStale = false;
+long  lastTickTimeMs = -1;
+int   clockDropoutMs = 750;
 
 // Effect type bias (via CC7)
 // -1 → always lines, 0 → alternate, +1 → always rotate
@@ -37,6 +58,10 @@ void setup() {
   noSmooth();
 
   loadDefaultConfig();  // from Config.pde
+  loadInteropConfig();  // from Interop.pde
+  configureRigModeFromInterop();  // from RigMapping.pde
+  initPresets(); // from Presets.pde
+  initOsc(); // from below
 
   syphonServer = new SyphonServer(this, "MidiVideoSyphonBeats");
 
@@ -52,13 +77,20 @@ void setup() {
     midiReady = false;
     midiDeviceListsEmpty = true;
     midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    printInteropStatus("none");
   }
   if (!midiDeviceListsEmpty) {
-    int[] midiInputCandidates = buildMidiInputCandidates(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
+    String[] nameHints = (interopPreferredInputName != null && interopPreferredInputName.length() > 0)
+      ? new String[] { interopPreferredInputName }
+      : new String[] { "Bus 1", "IAC" };
+    int fallbackIndex = (interopPreferredInputName != null && interopPreferredInputName.length() > 0) ? -1 : 1;
+    int[] midiInputCandidates = buildMidiInputCandidates(nameHints, fallbackIndex);
     if (midiInputCandidates.length == 0) {
+      printNoUsableMidiInputPorts();
       midiReady = false;
       midiInitFailed = true;
-      midiStatusMessage = "MIDI ERROR: no safe input found (\"Real Time Sequencer\" is ignored).";
+      midiStatusMessage = "MIDI ERROR: no usable input found (\"Real Time Sequencer\" is ignored).";
+      printInteropStatus("none");
     } else {
       boolean midiInitialized = false;
       String[] inputs = MidiBus.availableInputs();
@@ -71,6 +103,9 @@ void setup() {
           midiBus = new MidiBus(this, midiInputIndex, -1);
           midiReady = true;
           midiInitialized = true;
+          midiSelectedInputName = inputLabel;
+          midiInputFromInterop = isInteropSelectedInput(midiSelectedInputName);
+          printInteropStatus(midiSelectedInputName);
           break;
         } catch (Throwable e) {
           println("MIDI init failed for input " + inputLabel + ".");
@@ -88,6 +123,7 @@ void setup() {
         midiReady = false;
         midiInitFailed = true;
         midiStatusMessage = "MIDI ERROR: input init failed. Check console and device list.";
+        printInteropStatus("none");
         return;
       }
     }
@@ -96,8 +132,26 @@ void setup() {
   updateLineProperties();
 }
 
+void initOsc() {
+  oscListenPort = interopOscListenPort > 0 ? interopOscListenPort : CFG_OSC_LISTEN_PORT;
+  oscTargetHost = interopOscTargetHost != null && interopOscTargetHost.length() > 0
+    ? interopOscTargetHost
+    : CFG_OSC_TARGET_HOST;
+  oscTargetPort = interopOscTargetPort > 0 ? interopOscTargetPort : CFG_OSC_TARGET_PORT;
+  oscP5 = new OscP5(this, oscListenPort);
+  oscTarget = new NetAddress(oscTargetHost, oscTargetPort);
+  println("OSC listen: " + oscListenPort + " -> target " + oscTargetHost + ":" + oscTargetPort);
+}
+
 void draw() {
   background(0);
+
+  if (isPlaying && lastTickTimeMs >= 0) {
+    long now = millis();
+    if (now - lastTickTimeMs > clockDropoutMs) {
+      transportStale = true;
+    }
+  }
 
   if (!midiReady) {
     // MIDI isn't online yet: keep the window alive, stay black, show HUD text,
@@ -110,6 +164,14 @@ void draw() {
       drawMidiInitFailedOverlay();
     }
     syphonServer.sendScreen();
+    broadcastStateIfNeeded();
+    return;
+  }
+
+  if (blackoutActive) {
+    syphonServer.sendScreen();
+    drawHud();
+    broadcastStateIfNeeded();
     return;
   }
 
@@ -151,6 +213,7 @@ void draw() {
 
   syphonServer.sendScreen();
   drawHud();
+  broadcastStateIfNeeded();
 }
 
 void onBeat() {
@@ -172,6 +235,8 @@ void onBeat() {
   if (effectActive && beatCount - effectStartBeat >= effectDurationBeats) {
     effectActive = false;
   }
+
+  broadcastStateNow();
 }
 
 void drawVariableLine() {
@@ -256,6 +321,9 @@ void updateLineProperties() {
 }
 
 void drawHud() {
+  if (!showStatusOverlay) {
+    return;
+  }
   // HUD
   fill(255);
   textSize(14);
@@ -264,10 +332,14 @@ void drawHud() {
   text("Effect: " + effectType + (effectActive ? " (ON)" : " (OFF)"), 10, 60);
   text("Lines/frame: " + linesPerFrame, 10, 80);
   text("IntervalBeats: " + effectIntervalBeats + "  DurationBeats: " + effectDurationBeats, 10, 100);
+  text("Preset: " + activePresetName, 10, 120);
+  text("Transport: " + formatTransportStatus(), 10, 140);
+  text("MIDI in: " + formatMidiInputStatus(), 10, 160);
+  text("Last CC: " + formatLastCc(), 10, 180);
   if (!midiReady) {
-    text("MIDI: not connected (see console)", 10, 120);
+    text("MIDI: not connected (see console)", 10, 200);
     if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
-      text(midiStatusMessage, 10, 140);
+      text(midiStatusMessage, 10, 220);
     }
   }
 }
@@ -326,7 +398,36 @@ void rawMidi(byte[] data) {
 
   int status = data[0] & 0xFF;
 
+  if (status == 0xFA) {  // Start
+    tickCounter = 0;
+    beatCount = 0;
+    lastBeatTimeMs = -1;
+    lastTickTimeMs = millis();
+    transportStale = false;
+    isPlaying = true;
+    return;
+  } else if (status == 0xFC) {  // Stop
+    isPlaying = false;
+    return;
+  } else if (status == 0xFB) {  // Continue
+    isPlaying = true;
+    transportStale = false;
+    lastTickTimeMs = millis();
+    return;
+  } else if (status == 0xF2 && data.length >= 3) {  // Song Position Pointer
+    int lsb = data[1] & 0x7F;
+    int msb = data[2] & 0x7F;
+    int songPosition = (msb << 7) | lsb; // in 16th notes
+    beatCount = songPosition / 4;
+    tickCounter = 0;
+    lastBeatTimeMs = -1;
+    return;
+  }
+
   if (status == 0xF8) {  // MIDI Clock tick
+    lastTickTimeMs = millis();
+    transportStale = false;
+    if (!isPlaying) return;
     tickCounter++;
 
     if (tickCounter >= ticksPerBeat) {
@@ -335,7 +436,7 @@ void rawMidi(byte[] data) {
 
       if (lastBeatTimeMs >= 0) {
         float deltaMs = now - lastBeatTimeMs;
-        if (deltaMs > 0) {
+        if (deltaMs > 0 && deltaMs <= clockDropoutMs) {
           float instantBpm = 60000.0 / deltaMs;
           bpm = lerp(bpm, instantBpm, bpmSmoothing);
         }
@@ -349,53 +450,239 @@ void rawMidi(byte[] data) {
 // Generic MIDI CC mappings (any channel)
 void controllerChange(int channel, int number, int value) {
   if (!midiReady) return;
-  if (number == 1) {  // CC1: line density
-    linesPerFrame = int(map(value, 0, 127,
-                            CFG_LINES_PER_FRAME_MIN,
-                            CFG_LINES_PER_FRAME_MAX));
-
-  } else if (number == 2) {  // CC2: max line size
-    maxLineSize = int(map(value, 0, 127,
-                          CFG_MAX_LINE_SIZE_MIN,
-                          CFG_MAX_LINE_SIZE_MAX));
-
-  } else if (number == 3) {  // CC3: opacityMin
-    opacityMin = int(map(value, 0, 127,
-                         CFG_OPACITY_MIN_MIN,
-                         CFG_OPACITY_MIN_MAX));
-    if (opacityMin > opacityMax) opacityMin = opacityMax;
-
-  } else if (number == 4) {   // CC4: effect interval (beats)
-    effectIntervalBeats = int(map(value, 0, 127,
-                                  CFG_EFFECT_INTERVAL_MIN,
-                                  CFG_EFFECT_INTERVAL_MAX));
-    effectIntervalBeats = max(effectIntervalBeats, 1);
-
-  } else if (number == 5) {   // CC5: effect duration (beats)
-    effectDurationBeats = int(map(value, 0, 127,
-                                  CFG_EFFECT_DURATION_MIN,
-                                  CFG_EFFECT_DURATION_MAX));
-    effectDurationBeats = max(effectDurationBeats, 1);
-
-  } else if (number == 6) {   // CC6: BPM smoothing
-    bpmSmoothing = map(value, 0, 127,
-                       CFG_BPM_SMOOTHING_MIN,
-                       CFG_BPM_SMOOTHING_MAX);
-
-  } else if (number == 7) {   // CC7: effect bias
-    if (value < 42) {
-      effectBias = -1;   // lines only
-    } else if (value > 84) {
-      effectBias = 1;    // rotate only
-    } else {
-      effectBias = 0;    // alternate
-    }
-  }
+  lastCcChannel = channel;
+  lastCcNumber = number;
+  lastCcValue = value;
+  handleControllerChange(channel, number, value);
 }
 
 // Optional note mapping hooks
 void noteOn(int channel, int pitch, int velocity) {
   if (!midiReady) return;
+  handleSceneNoteOn(channel, pitch, velocity);
   // Example: pad to reset config
   // if (pitch == 36 && velocity > 0) loadDefaultConfig();
+}
+
+void noteOff(int channel, int pitch, int velocity) {
+  if (!midiReady) return;
+  handleSceneNoteOff(channel, pitch);
+}
+
+void keyPressed() {
+  if (key == '?') {
+    showStatusOverlay = !showStatusOverlay;
+  }
+}
+
+void oscEvent(OscMessage message) {
+  if (message == null) return;
+  String address = message.addrPattern();
+  String args = "";
+  int count = message.typetag().length();
+  for (int i = 0; i < count; i++) {
+    if (args.length() > 0) args += ", ";
+    args += message.get(i).toString();
+  }
+  println("OSC recv " + address + " " + args);
+
+  if (address.startsWith("/msvp/macro/")) {
+    if (rigTunedMode && message.typetag().length() >= 1) {
+      String param = address.substring("/msvp/macro/".length());
+      float value = message.get(0).floatValue();
+      setParamNormalized(param, value);
+    }
+    return;
+  } else if (address.startsWith("/msvp/analysis/")) {
+    if (rigTunedMode && message.typetag().length() >= 1) {
+      String param = address.substring("/msvp/analysis/".length());
+      float value = message.get(0).floatValue();
+      biasParamNormalized(param, value);
+    }
+    return;
+  }
+
+  if (address.equals("/video/scene/intro")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("intro");
+    } else {
+      applyPresetByName("neutral");
+    }
+    return;
+  } else if (address.equals("/video/scene/crash")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("crash");
+    } else {
+      applyPresetByName("neutral");
+    }
+    return;
+  } else if (address.equals("/video/scene/soft")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("soft");
+    } else {
+      applyPresetByName("neutral");
+    }
+    return;
+  } else if (address.equals("/video/scene/neutral")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("neutral");
+    }
+    return;
+  } else if (address.equals("/msvp/preset/neutral")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("neutral");
+    }
+    return;
+  } else if (address.equals("/nw_wrld/feed/blackout")) {
+    setBlackout(oscMessageBoolean(message));
+    return;
+  } else if (address.equals("/msvp/blackout")) {
+    setBlackout(oscMessageBoolean(message));
+    return;
+  }
+
+  if (address.equals("/preset")) {
+    if (message.typetag().length() >= 1) {
+      applyPresetByName(message.get(0).stringValue());
+    }
+  } else if (address.equals("/param")) {
+    if (message.typetag().length() >= 2) {
+      String name = message.get(0).stringValue();
+      float value = message.get(1).floatValue();
+      setParam(name, value);
+    }
+  } else if (address.equals("/bias")) {
+    if (message.typetag().length() >= 2) {
+      String name = message.get(0).stringValue();
+      float value = message.get(1).floatValue();
+      biasParam(name, value);
+    }
+  } else if (address.equals("/blackout")) {
+    if (message.typetag().length() >= 1) {
+      float value = message.get(0).floatValue();
+      setBlackout(value > 0.5);
+    }
+  }
+}
+
+boolean oscMessageIsActive(OscMessage message) {
+  if (message == null) return false;
+  String types = message.typetag();
+  if (types == null || types.length() == 0) return true;
+  try {
+    float value = message.get(0).floatValue();
+    return value > 0.0;
+  } catch (Throwable e) {
+    try {
+      String value = message.get(0).stringValue();
+      if (value == null) return false;
+      String trimmed = value.trim().toLowerCase();
+      return trimmed.equals("1") || trimmed.equals("true") || trimmed.equals("on");
+    } catch (Throwable inner) {
+      return false;
+    }
+  }
+}
+
+boolean oscMessageBoolean(OscMessage message) {
+  if (message == null) return false;
+  String types = message.typetag();
+  if (types == null || types.length() == 0) return true;
+  try {
+    float value = message.get(0).floatValue();
+    return value > 0.0;
+  } catch (Throwable e) {
+    try {
+      String value = message.get(0).stringValue();
+      if (value == null) return false;
+      String trimmed = value.trim().toLowerCase();
+      return trimmed.equals("1") || trimmed.equals("true") || trimmed.equals("on");
+    } catch (Throwable inner) {
+      return false;
+    }
+  }
+}
+
+void sendOsc(String address, Object... args) {
+  if (oscP5 == null || oscTarget == null) return;
+  OscMessage message = new OscMessage(address);
+  if (args != null) {
+    for (int i = 0; i < args.length; i++) {
+      Object arg = args[i];
+      if (arg instanceof Integer) {
+        message.add(((Integer) arg).intValue());
+      } else if (arg instanceof Float) {
+        message.add(((Float) arg).floatValue());
+      } else if (arg instanceof Double) {
+        message.add(((Double) arg).floatValue());
+      } else if (arg instanceof Boolean) {
+        message.add(((Boolean) arg).booleanValue() ? 1 : 0);
+      } else {
+        message.add(str(arg));
+      }
+    }
+  }
+  println("OSC send " + oscTargetHost + ":" + oscTargetPort + " " + address);
+  oscP5.send(message, oscTarget);
+}
+
+void broadcastStateIfNeeded() {
+  if (oscP5 == null || oscTarget == null) return;
+  if (beatCount != lastStateBeat) {
+    broadcastStateNow();
+    return;
+  }
+  long now = millis();
+  if (lastStateOscMs >= 0 && now - lastStateOscMs < stateOscIntervalMs) {
+    return;
+  }
+
+  lastStateOscMs = now;
+  sendOsc("/msvp/state/bpm", bpm);
+  sendOsc("/msvp/state/beat", (int) beatCount);
+  sendOsc("/msvp/state/preset", activePresetName);
+  sendOsc("/msvp/state/effectActive", effectActive ? 1 : 0);
+  sendOsc("/msvp/state/blackout", blackoutActive ? 1 : 0);
+}
+
+void broadcastStateNow() {
+  if (oscP5 == null || oscTarget == null) return;
+  lastStateBeat = beatCount;
+  lastStateOscMs = millis();
+  sendOsc("/msvp/state/bpm", bpm);
+  sendOsc("/msvp/state/beat", (int) beatCount);
+  sendOsc("/msvp/state/preset", activePresetName);
+  sendOsc("/msvp/state/effectActive", effectActive ? 1 : 0);
+  sendOsc("/msvp/state/blackout", blackoutActive ? 1 : 0);
+}
+
+String formatTransportStatus() {
+  if (!isPlaying) return "stopped";
+  if (transportStale) return "stale";
+  return "playing";
+}
+
+String formatMidiInputStatus() {
+  String label = (midiSelectedInputName == null || midiSelectedInputName.length() == 0)
+    ? "none"
+    : midiSelectedInputName;
+  if (midiInputFromInterop) {
+    return label + " (interop)";
+  }
+  return label;
+}
+
+String formatLastCc() {
+  if (lastCcNumber < 0) return "none";
+  int displayChannel = lastCcChannel + 1;
+  return "ch " + displayChannel + " cc " + lastCcNumber + " val " + lastCcValue;
+}
+
+boolean isInteropSelectedInput(String inputName) {
+  if (!interopLoaded) return false;
+  if (interopPreferredInputName == null || interopPreferredInputName.length() == 0) return false;
+  if (inputName == null || inputName.length() == 0) return false;
+  String preferred = interopPreferredInputName.toLowerCase();
+  String actual = inputName.toLowerCase();
+  return actual.indexOf(preferred) >= 0;
 }

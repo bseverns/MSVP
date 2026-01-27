@@ -1,0 +1,54 @@
+{
+  "preferred_midi_input": "IAC Bus 1",
+  "channels": {
+    "macro": 10,
+    "analysis": 15
+  },
+  "scene_verbs": {
+    "intro": 60,
+    "crash": 61,
+    "soft": 62
+  },
+  "osc": {
+    "listen_port": 9010,
+    "target_host": "127.0.0.1",
+    "target_port": 9000
+  },
+  "mappings": [
+    {
+      "lane": "macro",
+      "cc": 1,
+      "target": "linesPerFrame"
+    },
+    {
+      "lane": "macro",
+      "cc": 2,
+      "target": "maxLineSize"
+    },
+    {
+      "lane": "macro",
+      "cc": 3,
+      "target": "opacityMin"
+    },
+    {
+      "lane": "macro",
+      "cc": 4,
+      "target": "effectIntervalBeats"
+    },
+    {
+      "lane": "macro",
+      "cc": 5,
+      "target": "effectDurationBeats"
+    },
+    {
+      "lane": "macro",
+      "cc": 6,
+      "target": "bpmSmoothing"
+    },
+    {
+      "lane": "analysis",
+      "cc": 7,
+      "target": "effectBias"
+    }
+  ]
+}

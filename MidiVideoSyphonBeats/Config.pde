@@ -19,6 +19,17 @@ int CFG_EFFECT_DURATION_MAX   = 16;
 float CFG_BPM_SMOOTHING_MIN   = 0.05;
 float CFG_BPM_SMOOTHING_MAX   = 0.6;
 
+// Rig-tuned mode defaults
+boolean CFG_RIG_AUTO_ENABLE_FROM_INTEROP = true;
+int     CFG_RIG_DEFAULT_MACRO_CHANNEL = 10;
+int     CFG_RIG_DEFAULT_ANALYSIS_CHANNEL = 15;
+boolean rigTunedMode = false;
+
+// OSC defaults
+int CFG_OSC_LISTEN_PORT = 9010;
+String CFG_OSC_TARGET_HOST = "127.0.0.1";
+int CFG_OSC_TARGET_PORT = 9000;
+
 // Runtime parameters
 int   effectIntervalBeats;   // every N beats, start effect window
 int   effectDurationBeats;   // effect window length in beats

@@ -5,6 +5,8 @@
 // to keep every sketch behaving identically.
 
 final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Rosetta/MIDI bug?)";
+final String NO_USABLE_MIDI_INPUTS_MESSAGE = "No usable MIDI input ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).";
+final String NO_USABLE_MIDI_OUTPUTS_MESSAGE = "No usable MIDI output ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).";
 
 MidiBus safeMidiBus(int inputIndex, int outputIndex) {
   try {
@@ -34,6 +36,14 @@ boolean hasNonEmptyMidiDeviceLists() {
     return false;
   }
   return true;
+}
+
+void printNoUsableMidiInputPorts() {
+  println(NO_USABLE_MIDI_INPUTS_MESSAGE);
+}
+
+void printNoUsableMidiOutputPorts() {
+  println(NO_USABLE_MIDI_OUTPUTS_MESSAGE);
 }
 
 boolean hasNonEmptyMidiNames(String[] ports) {
@@ -166,7 +176,7 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No usable MIDI input ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
+    printNoUsableMidiInputPorts();
   }
   return -1;
 }
@@ -212,7 +222,7 @@ int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   }
 
   if (validCount == 0) {
-    println("No usable MIDI output ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).");
+    printNoUsableMidiOutputPorts();
   }
   return -1;
 }
