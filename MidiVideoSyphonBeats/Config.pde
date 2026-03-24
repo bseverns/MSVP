@@ -20,7 +20,8 @@ float CFG_BPM_SMOOTHING_MIN   = 0.05;
 float CFG_BPM_SMOOTHING_MAX   = 0.6;
 
 // Rig-tuned mode defaults
-boolean CFG_RIG_AUTO_ENABLE_FROM_INTEROP = true;
+// Keep generic mode as the default unless the interop contract opts into rig mode.
+boolean CFG_RIG_AUTO_ENABLE_FROM_INTEROP = false;
 int     CFG_RIG_DEFAULT_MACRO_CHANNEL = 10;
 int     CFG_RIG_DEFAULT_ANALYSIS_CHANNEL = 15;
 boolean rigTunedMode = false;
@@ -29,6 +30,9 @@ boolean rigTunedMode = false;
 int CFG_OSC_LISTEN_PORT = 9010;
 String CFG_OSC_TARGET_HOST = "127.0.0.1";
 int CFG_OSC_TARGET_PORT = 9000;
+
+// Video defaults
+int CFG_VIDEO_LOAD_TIMEOUT_MS = 5000;
 
 // Runtime parameters
 int   effectIntervalBeats;   // every N beats, start effect window

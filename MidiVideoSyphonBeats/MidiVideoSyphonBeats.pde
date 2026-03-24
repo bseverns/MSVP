@@ -7,6 +7,12 @@ import netP5.*;
 Movie video;
 SyphonServer syphonServer;
 MidiBus midiBus;
+String videoFilename = "video.mp4";
+boolean videoReady = false;
+boolean videoFileMissing = false;
+boolean videoLoadFailed = false;
+String videoStatusMessage = "";
+long videoInitMs = -1;
 boolean midiReady = false;
 boolean midiInitFailed = false;
 boolean midiDeviceListsEmpty = false;
@@ -65,10 +71,7 @@ void setup() {
 
   syphonServer = new SyphonServer(this, "MidiVideoSyphonBeats");
 
-  // Put your video file in ./data/
-  video = new Movie(this, "video.mp4");
-  video.loop();
-  video.play();
+  initVideo();
 
   // Choose correct MIDI input index after checking MidiBus.list() in console
   MidiBus.list();
@@ -132,6 +135,37 @@ void setup() {
   updateLineProperties();
 }
 
+void initVideo() {
+  video = null;
+  videoReady = false;
+  videoFileMissing = false;
+  videoLoadFailed = false;
+  videoStatusMessage = "";
+  videoInitMs = -1;
+
+  java.io.File videoFile = new java.io.File(dataPath(videoFilename));
+  if (!videoFile.exists()) {
+    videoFileMissing = true;
+    videoLoadFailed = true;
+    videoStatusMessage = "VIDEO ERROR: missing data/" + videoFilename;
+    println(videoStatusMessage);
+    return;
+  }
+
+  try {
+    video = new Movie(this, videoFilename);
+    video.loop();
+    video.play();
+    videoInitMs = millis();
+    videoStatusMessage = "Loading data/" + videoFilename + "...";
+  } catch (Throwable e) {
+    videoLoadFailed = true;
+    videoStatusMessage = "VIDEO ERROR: failed to open data/" + videoFilename + ".";
+    println(videoStatusMessage);
+    e.printStackTrace();
+  }
+}
+
 void initOsc() {
   oscListenPort = interopOscListenPort > 0 ? interopOscListenPort : CFG_OSC_LISTEN_PORT;
   oscTargetHost = interopOscTargetHost != null && interopOscTargetHost.length() > 0
@@ -145,6 +179,7 @@ void initOsc() {
 
 void draw() {
   background(0);
+  updateVideoStatus();
 
   if (isPlaying && lastTickTimeMs >= 0) {
     long now = millis();
@@ -175,7 +210,11 @@ void draw() {
     return;
   }
 
-  if (video.width == 0 || video.height == 0) {
+  if (!isVideoReady()) {
+    drawHud();
+    drawVideoStatusOverlay();
+    syphonServer.sendScreen();
+    broadcastStateIfNeeded();
     return;
   }
 
@@ -214,6 +253,25 @@ void draw() {
   syphonServer.sendScreen();
   drawHud();
   broadcastStateIfNeeded();
+}
+
+void updateVideoStatus() {
+  if (videoReady) return;
+  if (videoFileMissing || videoLoadFailed) return;
+  if (video != null && video.width > 0 && video.height > 0) {
+    videoReady = true;
+    videoStatusMessage = "";
+    return;
+  }
+  if (videoInitMs >= 0 && millis() - videoInitMs > CFG_VIDEO_LOAD_TIMEOUT_MS) {
+    videoLoadFailed = true;
+    videoStatusMessage = "VIDEO ERROR: timed out loading " + videoFilename + ". Use an H.264 MP4.";
+    println(videoStatusMessage);
+  }
+}
+
+boolean isVideoReady() {
+  return video != null && videoReady && video.width > 0 && video.height > 0;
 }
 
 void onBeat() {
@@ -336,10 +394,11 @@ void drawHud() {
   text("Transport: " + formatTransportStatus(), 10, 140);
   text("MIDI in: " + formatMidiInputStatus(), 10, 160);
   text("Last CC: " + formatLastCc(), 10, 180);
+  text("Video: " + formatVideoStatus(), 10, 200);
   if (!midiReady) {
-    text("MIDI: not connected (see console)", 10, 200);
+    text("MIDI: not connected (see console)", 10, 220);
     if (midiStatusMessage != null && !midiStatusMessage.equals("")) {
-      text(midiStatusMessage, 10, 220);
+      text(midiStatusMessage, 10, 240);
     }
   }
 }
@@ -386,9 +445,41 @@ void drawMidiInitFailedOverlay() {
   popStyle();
 }
 
+void drawVideoStatusOverlay() {
+  pushStyle();
+  fill(0, 180);
+  noStroke();
+  rect(0, 0, width, height);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+
+  String headline = "Loading video...";
+  if (videoFileMissing) {
+    headline = "Missing data/" + videoFilename;
+  } else if (videoLoadFailed) {
+    headline = "Video load failed";
+  }
+
+  text(headline, width / 2.0, height / 2.0 - 18);
+
+  textSize(16);
+  String detail = videoStatusMessage;
+  if (detail == null || detail.equals("")) {
+    detail = "Place a playable H.264 MP4 at data/" + videoFilename;
+  }
+  text(detail, width / 2.0, height / 2.0 + 18);
+  popStyle();
+}
+
 // Video frames
 void movieEvent(Movie m) {
   m.read();
+  if (m != null && m.width > 0 && m.height > 0) {
+    videoReady = true;
+    videoLoadFailed = false;
+    videoStatusMessage = "";
+  }
 }
 
 // MIDI clock → BPM + beatCount
@@ -676,6 +767,13 @@ String formatLastCc() {
   if (lastCcNumber < 0) return "none";
   int displayChannel = lastCcChannel + 1;
   return "ch " + displayChannel + " cc " + lastCcNumber + " val " + lastCcValue;
+}
+
+String formatVideoStatus() {
+  if (isVideoReady()) return "ready";
+  if (videoFileMissing) return "missing";
+  if (videoLoadFailed) return "failed";
+  return "loading";
 }
 
 boolean isInteropSelectedInput(String inputName) {

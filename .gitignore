@@ -10,3 +10,6 @@ build/
 *.mov
 *.avi
 *.mkv
+
+# Keep the bundled sample clip under version control.
+!MidiVideoSyphonBeats/data/video.mp4

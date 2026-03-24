@@ -16,7 +16,7 @@ This repo ships with two main modes:
 1. **Generic mode** (this repository):
    - No assumptions about channels or controllers.
    - Simple, controller-agnostic CC mapping.
-2. **Rig-tuned mode** (in your `live-rig` repo):
+2. **Rig-tuned mode** (optional in this repo via interop):
    - Knows about specific devices (e.g. PCM-30 on Ch 10, frZone on Ch 15).
    - Uses your macro / analysis lane semantics.
 
@@ -68,7 +68,7 @@ It derives tempo from the same clock as the rest of your rig.
 
 ## 2. Control: Macros vs. Generic CCs
 
-In the generic version (this repo), `controllerChange()` is intentionally simple:
+In generic mode, `controllerChange()` is intentionally simple:
 
 - It responds to CCs **on any channel**.
 - It uses fixed mappings:
@@ -87,6 +87,9 @@ This makes it easy to:
 
 - Point *any* MIDI controller or routing node at the sketch.
 - Start sculpting the visuals without worrying about rig semantics yet.
+
+Rig mode is explicit. It only turns on when the interop contract sets
+`runtime.rigTunedMode` to `true`.
 
 ### When you integrate with `live-rig`
 
@@ -109,11 +112,11 @@ That tuned variant can live alongside this generic one, but conceptually:
 
 To adapt this repo to your rig’s grammar:
 
-1. Clone `MidiVideoSyphonBeats` into your `live-rig` repo.
-2. Replace `controllerChange()` with your rig-specific mapping:
-   - Gate by `channel` (e.g. 10 and 15).
-   - Map from your macro/analysis concepts to the parameters here.
-3. Optionally, keep this generic copy as a template / test harness.
+1. Edit `MidiVideoSyphonBeats/data/live_rig_interop.json`.
+2. Set `runtime.rigTunedMode` to `true`.
+3. Map your profile pads to `/msvp/macro/<param>` and `/msvp/analysis/<param>` addresses.
+4. Set the preferred MIDI input and channels in `runtime`.
+5. Only fork the sketch code if your rig semantics exceed the current parameter model.
 
 ---
 

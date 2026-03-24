@@ -22,7 +22,7 @@ videoProcessing-midi-sync/
     Config.pde
     MidiHelpers.pde
     data/
-      video.mp4        # you provide this
+      video.mp4        # bundled short sample clip; replace as needed
       .gitkeep
   MidiClockMonitor/
     MidiClockMonitor.pde
@@ -102,7 +102,7 @@ Effect scheduling is controlled in **beats**:
 
 Tunables live in `Config.pde` and several are exposed to MIDI CC.
 
-### Generic MIDI CC mapping (default)
+### Generic MIDI CC mapping (default when rig mode is off)
 
 | CC # | Parameter              | Description                                                        |
 |-----|------------------------|--------------------------------------------------------------------|
@@ -114,7 +114,8 @@ Tunables live in `Config.pde` and several are exposed to MIDI CC.
 | 6   | `bpmSmoothing`         | How quickly BPM responds to changes (0.05 = snappy, 0.6 = smooth). |
 | 7   | `effectBias`           | -1 = lines only, 0 = alternate, +1 = rotate only.                  |
 
-It responds on any MIDI channel by default; you can gate by channel if desired.
+It responds on any MIDI channel when `runtime.rigTunedMode` is `false` in the interop file.
+When rig mode is enabled, macro and analysis channels are gated by the interop contract.
 
 ---
 
@@ -165,11 +166,13 @@ You’ll need a **virtual MIDI loopback** device (e.g. IAC Bus on macOS, loopMID
 
 ### 1. Put a video in the data folder
 
-Place a video file in:
+The repo ships a short sample clip at:
 
 ```text
 MidiVideoSyphonBeats/data/video.mp4
 ```
+
+Replace it with your own loop whenever you want.
 
 Quick spec sheet (keep it punk, keep it playable):
 
@@ -194,15 +197,10 @@ video = new Movie(this, "your-video-name.mp4");
    MidiBus.list();
    ```
 
-4. Change this line in `MidiVideoSyphonBeats.pde`:
+4. By default, the sketches try the interop file’s preferred MIDI input first, then common loopback names like `Bus 1` and `IAC`.
+5. If you want to force a specific device, update `runtime.midi.preferredInput` in `MidiVideoSyphonBeats/data/live_rig_interop.json`.
 
-   ```java
-   midiBus = new MidiBus(this, 0, -1);
-   ```
-
-   Replace `0` with the index of the MIDI input receiving clock.
-
-Do the same in `MidiClockMonitor.pde` and `MidiClockSimulator.pde` (for output).
+`MidiClockMonitor` and `MidiClockSimulator` use the same candidate-selection logic.
 
 ### 2.5. MIDI device gotchas (aka: why “Real Time Sequencer” bites you)
 

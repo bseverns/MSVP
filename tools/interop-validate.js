@@ -228,6 +228,71 @@ function validateProfile(profile, ctx, errors, warnings) {
   }
 }
 
+function validateRuntime(runtime, ctx, errors) {
+  if (!isObject(runtime)) {
+    errors.push(ctx + ' must be an object');
+    return;
+  }
+
+  ['rigTunedMode', 'rig_tuned_mode'].forEach(function (key) {
+    if (runtime[key] !== undefined && typeof runtime[key] !== 'boolean') {
+      errors.push(ctx + '.' + key + ' must be a boolean');
+    }
+  });
+
+  ['profile', 'profileId'].forEach(function (key) {
+    if (runtime[key] !== undefined && (typeof runtime[key] !== 'string' || runtime[key].trim() === '')) {
+      errors.push(ctx + '.' + key + ' must be a non-empty string');
+    }
+  });
+
+  if (runtime.channels !== undefined) {
+    if (!isObject(runtime.channels)) {
+      errors.push(ctx + '.channels must be an object');
+    } else {
+      ['macro', 'analysis'].forEach(function (key) {
+        if (runtime.channels[key] !== undefined && !isIntInRange(runtime.channels[key], 1, 16)) {
+          errors.push(ctx + '.channels.' + key + ' must be an integer 1-16');
+        }
+      });
+    }
+  }
+
+  if (runtime.midi !== undefined) {
+    if (!isObject(runtime.midi)) {
+      errors.push(ctx + '.midi must be an object');
+    } else {
+      ['preferredInput', 'preferred_input', 'preferredMidiInput', 'preferred_midi_input'].forEach(function (key) {
+        if (runtime.midi[key] !== undefined && (typeof runtime.midi[key] !== 'string' || runtime.midi[key].trim() === '')) {
+          errors.push(ctx + '.midi.' + key + ' must be a non-empty string');
+        }
+      });
+      ['macroChannel', 'macro_channel', 'analysisChannel', 'analysis_channel'].forEach(function (key) {
+        if (runtime.midi[key] !== undefined && !isIntInRange(runtime.midi[key], 1, 16)) {
+          errors.push(ctx + '.midi.' + key + ' must be an integer 1-16');
+        }
+      });
+    }
+  }
+
+  if (runtime.osc !== undefined) {
+    if (!isObject(runtime.osc)) {
+      errors.push(ctx + '.osc must be an object');
+    } else {
+      ['listenPort', 'listen_port', 'targetPort', 'target_port'].forEach(function (key) {
+        if (runtime.osc[key] !== undefined && !isIntInRange(runtime.osc[key], 1, 65535)) {
+          errors.push(ctx + '.osc.' + key + ' must be an integer 1-65535');
+        }
+      });
+      ['targetHost', 'target_host'].forEach(function (key) {
+        if (runtime.osc[key] !== undefined && (typeof runtime.osc[key] !== 'string' || runtime.osc[key].trim() === '')) {
+          errors.push(ctx + '.osc.' + key + ' must be a non-empty string');
+        }
+      });
+    }
+  }
+}
+
 function validateInterop(doc, schema, errors, warnings) {
   if (!isObject(doc)) {
     errors.push('root must be an object');
@@ -235,6 +300,9 @@ function validateInterop(doc, schema, errors, warnings) {
   }
   if (doc.interopVersion !== undefined && typeof doc.interopVersion !== 'string') {
     errors.push('interopVersion must be a string');
+  }
+  if (doc.runtime !== undefined) {
+    validateRuntime(doc.runtime, 'runtime', errors);
   }
   if (!isObject(doc.profiles)) {
     errors.push('profiles must be an object');

@@ -10,6 +10,9 @@
     "interopVersion": {
       "type": "string"
     },
+    "runtime": {
+      "$ref": "#/$defs/runtime"
+    },
     "profiles": {
       "type": "object",
       "minProperties": 1,
@@ -20,6 +23,127 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "rigTunedMode": {
+          "type": "boolean"
+        },
+        "rig_tuned_mode": {
+          "type": "boolean"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "midi": {
+          "$ref": "#/$defs/runtimeMidi"
+        },
+        "channels": {
+          "$ref": "#/$defs/runtimeChannels"
+        },
+        "osc": {
+          "$ref": "#/$defs/runtimeOsc"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeMidi": {
+      "type": "object",
+      "properties": {
+        "preferredInput": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferred_input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferredMidiInput": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferred_midi_input": {
+          "type": "string",
+          "minLength": 1
+        },
+        "macroChannel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "macro_channel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "analysisChannel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "analysis_channel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeChannels": {
+      "type": "object",
+      "properties": {
+        "macro": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "analysis": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeOsc": {
+      "type": "object",
+      "properties": {
+        "listenPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "listen_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "targetHost": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "target_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "additionalProperties": false
+    },
     "profile": {
       "type": "object",
       "required": [

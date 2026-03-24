@@ -4,20 +4,20 @@
 
 ### MidiVideoSyphonBeats/MidiVideoSyphonBeats.pde
 - Initializes a 1000x750 P3D window, loads defaults from `Config.pde`, starts a Syphon server named `MidiVideoSyphonBeats`, and loops `data/video.mp4`.
+- Keeps generic mode as the default; rig mode only turns on when the interop contract requests it.
 - MIDI init: lists devices, refuses to start if device lists are empty, then tries input candidates matching `"Bus 1"` / `"IAC"` (fallback index 1), skipping Java's "Real Time Sequencer"; no MIDI output is used (`-1`). On failure it keeps a black frame with HUD/overlays.
 - Draw loop:
   - If MIDI isn't ready, draws HUD + error overlays and sends a black Syphon frame.
-  - If video isn't ready, returns early.
+  - If video isn't ready, keeps the window alive and shows a loud video-status overlay.
   - Sets `video.speed(bpm / 100.0)`.
   - Runs `onBeat()` once per beat to start/stop effect windows.
   - Effect modes:
     - `lines`: draws the video + randomized strokes sampled from video pixels.
     - `rotate`: rotates pixels in-place and draws the modified frame.
   - Sends the Syphon frame and draws the HUD every frame.
-- Beat tracking: `rawMidi()` handles MIDI clock `0xF8`, counts 24 ticks per beat, and smooths BPM via `bpmSmoothing`.
+- Beat tracking: `rawMidi()` handles MIDI clock `0xF8`, counts 24 ticks per beat, smooths BPM via `bpmSmoothing`, and honors Start/Stop/Continue plus Song Position Pointer.
 - Generic control mapping: `controllerChange()` listens on any channel and maps CC1-CC7 to parameters (density, line size, opacity min, effect interval/duration, BPM smoothing, effect bias).
-- Note hooks exist but are unused.
-- There is no MIDI Start/Stop/Continue handling; beatCount never resets unless you restart the sketch.
+- Note hooks drive rig-tuned scene presets when rig mode is enabled.
 
 ### MidiVideoSyphonBeats/MidiHelpers.pde
 - Shared MIDI helpers to avoid the "Real Time Sequencer" trap.
@@ -36,7 +36,7 @@
 ### docs/live-rig-endpoint.md
 - Describes the sketch as a "visual endpoint" with MIDI clock + CC input and Syphon output.
 - Defines two modes: generic mode (controller-agnostic CCs) and rig-tuned mode (device/channel-aware macros).
-- Explains CC mapping and suggests replacing `controllerChange()` in a rig-specific copy.
+- Describes the interop-driven rig-tuned path instead of requiring a code fork up front.
 
 ### docs/midi-loopback-setup.md
 - Step-by-step instructions for creating IAC (macOS) or loopMIDI (Windows) virtual ports.

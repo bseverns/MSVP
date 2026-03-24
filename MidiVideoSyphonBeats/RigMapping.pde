@@ -32,7 +32,8 @@ float RIG_BPM_SMOOTHING_BIAS_MAX = 0.12;
 float RIG_EFFECT_BIAS_WIND_MAX = 0.5;
 
 void configureRigModeFromInterop() {
-  if (CFG_RIG_AUTO_ENABLE_FROM_INTEROP && interopLoaded) {
+  rigTunedMode = interopRigTunedModeRequested;
+  if (!rigTunedMode && CFG_RIG_AUTO_ENABLE_FROM_INTEROP && interopLoaded) {
     rigTunedMode = true;
   }
   configureRigChannels();

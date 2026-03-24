@@ -1,54 +1,314 @@
 {
-  "preferred_midi_input": "IAC Bus 1",
-  "channels": {
-    "macro": 10,
-    "analysis": 15
-  },
-  "scene_verbs": {
-    "intro": 60,
-    "crash": 61,
-    "soft": 62
-  },
-  "osc": {
-    "listen_port": 9010,
-    "target_host": "127.0.0.1",
-    "target_port": 9000
-  },
-  "mappings": [
-    {
-      "lane": "macro",
-      "cc": 1,
-      "target": "linesPerFrame"
+  "interopVersion": "1.0.0",
+  "runtime": {
+    "rigTunedMode": false,
+    "profile": "msvp",
+    "midi": {
+      "preferredInput": "IAC Bus 1",
+      "macroChannel": 10,
+      "analysisChannel": 15
     },
-    {
-      "lane": "macro",
-      "cc": 2,
-      "target": "maxLineSize"
-    },
-    {
-      "lane": "macro",
-      "cc": 3,
-      "target": "opacityMin"
-    },
-    {
-      "lane": "macro",
-      "cc": 4,
-      "target": "effectIntervalBeats"
-    },
-    {
-      "lane": "macro",
-      "cc": 5,
-      "target": "effectDurationBeats"
-    },
-    {
-      "lane": "macro",
-      "cc": 6,
-      "target": "bpmSmoothing"
-    },
-    {
-      "lane": "analysis",
-      "cc": 7,
-      "target": "effectBias"
+    "osc": {
+      "listenPort": 9010,
+      "targetHost": "127.0.0.1",
+      "targetPort": 9000
     }
-  ]
+  },
+  "profiles": {
+    "msvp": {
+      "label": "MSVP rig-tuned endpoint",
+      "pads": [
+        {
+          "id": "vid_scene_intro",
+          "label": "Scene Intro",
+          "mode": "toggle",
+          "midi": {
+            "type": "note",
+            "channel": 10,
+            "note": 60,
+            "onVelocity": 127,
+            "offVelocity": 0
+          },
+          "osc": {
+            "address": "/video/scene/intro",
+            "onArgs": [
+              1
+            ],
+            "offArgs": [
+              0
+            ]
+          },
+          "notes": "preset:intro"
+        },
+        {
+          "id": "vid_scene_crash",
+          "label": "Scene Crash",
+          "mode": "toggle",
+          "midi": {
+            "type": "note",
+            "channel": 10,
+            "note": 61,
+            "onVelocity": 127,
+            "offVelocity": 0
+          },
+          "osc": {
+            "address": "/video/scene/crash",
+            "onArgs": [
+              1
+            ],
+            "offArgs": [
+              0
+            ]
+          },
+          "notes": "preset:crash"
+        },
+        {
+          "id": "vid_scene_soft",
+          "label": "Scene Soft",
+          "mode": "toggle",
+          "midi": {
+            "type": "note",
+            "channel": 10,
+            "note": 62,
+            "onVelocity": 127,
+            "offVelocity": 0
+          },
+          "osc": {
+            "address": "/video/scene/soft",
+            "onArgs": [
+              1
+            ],
+            "offArgs": [
+              0
+            ]
+          },
+          "notes": "preset:soft"
+        },
+        {
+          "id": "macro_density",
+          "label": "Macro Density",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 1
+          },
+          "osc": {
+            "address": "/msvp/macro/linesPerFrame",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:linesPerFrame"
+        },
+        {
+          "id": "macro_line_size",
+          "label": "Macro Line Size",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 2
+          },
+          "osc": {
+            "address": "/msvp/macro/maxLineSize",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:maxLineSize"
+        },
+        {
+          "id": "macro_opacity_floor",
+          "label": "Macro Opacity Floor",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 3
+          },
+          "osc": {
+            "address": "/msvp/macro/opacityMin",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:opacityMin"
+        },
+        {
+          "id": "macro_effect_interval",
+          "label": "Macro Effect Interval",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 4
+          },
+          "osc": {
+            "address": "/msvp/macro/effectIntervalBeats",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:effectIntervalBeats"
+        },
+        {
+          "id": "macro_effect_duration",
+          "label": "Macro Effect Duration",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 5
+          },
+          "osc": {
+            "address": "/msvp/macro/effectDurationBeats",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:effectDurationBeats"
+        },
+        {
+          "id": "macro_bpm_smoothing",
+          "label": "Macro BPM Smoothing",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 6
+          },
+          "osc": {
+            "address": "/msvp/macro/bpmSmoothing",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:bpmSmoothing"
+        },
+        {
+          "id": "macro_effect_bias",
+          "label": "Macro Effect Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 10,
+            "cc": 7
+          },
+          "osc": {
+            "address": "/msvp/macro/effectBias",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:macro target:effectBias"
+        },
+        {
+          "id": "analysis_density",
+          "label": "Analysis Density Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 1
+          },
+          "osc": {
+            "address": "/msvp/analysis/linesPerFrame",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:linesPerFrame"
+        },
+        {
+          "id": "analysis_line_size",
+          "label": "Analysis Line Size Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 2
+          },
+          "osc": {
+            "address": "/msvp/analysis/maxLineSize",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:maxLineSize"
+        },
+        {
+          "id": "analysis_opacity_floor",
+          "label": "Analysis Opacity Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 3
+          },
+          "osc": {
+            "address": "/msvp/analysis/opacityMin",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:opacityMin"
+        },
+        {
+          "id": "analysis_effect_interval",
+          "label": "Analysis Effect Interval Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 4
+          },
+          "osc": {
+            "address": "/msvp/analysis/effectIntervalBeats",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:effectIntervalBeats"
+        },
+        {
+          "id": "analysis_effect_duration",
+          "label": "Analysis Effect Duration Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 5
+          },
+          "osc": {
+            "address": "/msvp/analysis/effectDurationBeats",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:effectDurationBeats"
+        },
+        {
+          "id": "analysis_bpm_smoothing",
+          "label": "Analysis BPM Smoothing Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 6
+          },
+          "osc": {
+            "address": "/msvp/analysis/bpmSmoothing",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:bpmSmoothing"
+        },
+        {
+          "id": "analysis_effect_bias",
+          "label": "Analysis Effect Bias",
+          "midi": {
+            "type": "cc",
+            "channel": 15,
+            "cc": 7
+          },
+          "osc": {
+            "address": "/msvp/analysis/effectBias",
+            "args": [
+              1.0
+            ]
+          },
+          "notes": "lane:analysis target:effectBias"
+        }
+      ]
+    }
+  }
 }

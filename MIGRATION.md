@@ -8,6 +8,10 @@ This repo now ships the `live-rig-control` interop contract in
 
 - Root is a set of `profiles`, each with `pads`.
 - `interopVersion` is a string identifier (optional but recommended).
+- Optional app-specific runtime settings can live under `runtime`:
+  - `rigTunedMode`
+  - MIDI preferred input / channels
+  - OSC listen/target ports
 - Toggle semantics are explicit:
   - `toggle: true` or `mode: "toggle"`.
 - OSC toggles **must** define both `onArgs` and `offArgs`.
@@ -47,6 +51,9 @@ Make sure your root object includes `interopVersion` and `profiles`:
 ```json
 {
   "interopVersion": "1.0.0",
+  "runtime": {
+    "rigTunedMode": true
+  },
   "profiles": {
     "default": {
       "pads": [ ... ]

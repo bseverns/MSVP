@@ -15,10 +15,20 @@ Use the interop file in the sketch data folder:
 MidiVideoSyphonBeats/data/live_rig_interop.json
 ```
 
-Set your preferred virtual port name so MSVP auto-selects it:
+The shipped file keeps rig mode off so the repo still behaves generically by default.
+To enable rig-tuned lanes, flip the runtime flag and set your preferred MIDI port:
 
-```
-"preferred_midi_input": "IAC Bus 1"
+```json
+{
+  "runtime": {
+    "rigTunedMode": true,
+    "midi": {
+      "preferredInput": "IAC Bus 1",
+      "macroChannel": 10,
+      "analysisChannel": 15
+    }
+  }
+}
 ```
 
 ## 3) Clock routing + follower invariant
@@ -49,7 +59,7 @@ OSC (arg1 == 1 activates):
 /video/scene/soft
 ```
 
-## 5) Generic CC map (any channel)
+## 5) Generic CC map (any channel, only when rig mode is off)
 
 | CC | Param | Meaning |
 | -- | ----- | ------- |
@@ -63,14 +73,20 @@ OSC (arg1 == 1 activates):
 
 ## 6) Rig-tuned lanes (macro + analysis)
 
-Defaults (configurable in interop):
+Defaults (configurable in `runtime.midi` or `runtime.channels`):
 
-```
-"channels": { "macro": 10, "analysis": 15 }
+```json
+"runtime": {
+  "midi": {
+    "macroChannel": 10,
+    "analysisChannel": 15
+  }
+}
 ```
 
 - **Macro lane** sets base intent (same params as CC map).
 - **Analysis lane** adds wind (bias) without overriding macro.
+These lanes are only active when `runtime.rigTunedMode` is `true`.
 
 OSC equivalents (0..1 normalized):
 
