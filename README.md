@@ -55,6 +55,19 @@ VJ app
 If you want the rig-tuned variant (interop contract, macro/analysis lanes, scene presets),
 start here: `docs/rig-tuned-quickstart.md`.
 
+## Modes
+
+`MidiVideoSyphonBeats` intentionally ships with two distinct operating modes:
+
+- Generic sketch mode: `runtime.rigTunedMode` is `false`, CC1..CC7 respond on
+  any channel, and the repo stays controller-agnostic.
+- Rig endpoint mode: `runtime.rigTunedMode` is `true`, the shared interop
+  contract becomes authoritative for scene triggers, macro lane, analysis lane,
+  and OSC equivalents.
+
+The shipping interop file keeps rig mode off by default so the repository stays
+sketch-friendly until you explicitly flip that boundary.
+
 ### Wiring recipes (copy/paste this into your muscle memory)
 
 1. **DAW → virtual MIDI loopback → Processing**
@@ -116,6 +129,12 @@ Tunables live in `Config.pde` and several are exposed to MIDI CC.
 
 It responds on any MIDI channel when `runtime.rigTunedMode` is `false` in the interop file.
 When rig mode is enabled, macro and analysis channels are gated by the interop contract.
+
+Before using rig endpoint mode, validate the shipped contract:
+
+```sh
+python3 scripts/validate_rig_interop.py
+```
 
 ---
 
