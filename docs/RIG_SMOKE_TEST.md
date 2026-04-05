@@ -6,6 +6,9 @@ Run the contract check first:
 python3 scripts/validate_rig_interop.py
 ```
 
+If sibling `live-rig` and `live-rig-control` repos are checked out next to this
+repo, that same command will flag scene or lane drift there too.
+
 Then verify the live path with the sketch running and the `?` overlay visible.
 
 ## Checklist

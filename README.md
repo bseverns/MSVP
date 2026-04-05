@@ -1,4 +1,7 @@
-# videoProcessing-midi-sync
+# MSVP / MidiVideoSyphonBeats
+
+Formerly `videoProcessing-midi-sync`, this repo is the MSVP visual endpoint used
+alongside `live-rig` and `live-rig-control`.
 
 Processing sketches for live video processing with:
 
@@ -12,7 +15,7 @@ Processing sketches for live video processing with:
 ## Structure
 
 ```text
-videoProcessing-midi-sync/
+MSVP/
   README.md
   LICENSE
   .gitignore
@@ -50,10 +53,14 @@ Syphon
 VJ app
 ```
 
-## Rig-tuned quickstart (live-rig operator sheet)
+## Rig-tuned quickstart (live-rig + live-rig-control)
 
-If you want the rig-tuned variant (interop contract, macro/analysis lanes, scene presets),
-start here: `docs/rig-tuned-quickstart.md`.
+If you want the rig-tuned endpoint variant, start here:
+`docs/rig-tuned-quickstart.md`.
+
+The shared contract artifact lives at `contracts/msvp_live_rig_control.yaml`.
+It mirrors the controller-side contract in `live-rig-control` so the endpoint,
+controller, and scene sheet can be validated together.
 
 ## Modes
 
@@ -135,6 +142,9 @@ Before using rig endpoint mode, validate the shipped contract:
 ```sh
 python3 scripts/validate_rig_interop.py
 ```
+
+If sibling `live-rig` and `live-rig-control` checkouts exist beside this repo,
+the same command also checks their MSVP-facing contract surfaces.
 
 ---
 

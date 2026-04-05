@@ -1,9 +1,9 @@
-# How MSVP plugs into live-rig (MIDI + OSC)
+# How MSVP plugs into live-rig and live-rig-control
 
-One-page operator sheet for using **MidiVideoSyphonBeats** as either:
+One-page operator sheet for using **MSVP / MidiVideoSyphonBeats** as either:
 
 - a generic sketch with simple CC control, or
-- an explicit live-rig endpoint driven by the shared interop contract.
+- an explicit rig endpoint driven by the shared cross-repo contract.
 
 ## 1) Know which mode you are in
 
@@ -30,8 +30,10 @@ You need a real loopback device such as IAC on macOS or loopMIDI on Windows.
 
 ## 3) Use the interop contract
 
-The contract lives at
+The machine-readable endpoint config lives at
 [live_rig_interop.json](/Users/bseverns/Documents/GitHub/MSVP/MidiVideoSyphonBeats/data/live_rig_interop.json).
+The focused cross-repo contract lives at
+[msvp_live_rig_control.yaml](/Users/bseverns/Documents/GitHub/MSVP/contracts/msvp_live_rig_control.yaml).
 
 The shipped file keeps rig mode off so the repo still behaves generically by default.
 To make MSVP act as a rig endpoint, flip the runtime flag and set the preferred
@@ -55,6 +57,10 @@ Validate before launch:
 ```sh
 python3 scripts/validate_rig_interop.py
 ```
+
+That checks the local endpoint contract and, when sibling repos are present,
+also verifies `../live-rig/mappings.json` and
+`../live-rig-control/src/mappings.json`.
 
 ## 4) Clock routing and transport ownership
 
@@ -137,6 +143,12 @@ OSC equivalents use normalized `0..1` values:
 /msvp/macro/<param> <0..1>
 /msvp/analysis/<param> <0..1>
 ```
+
+In `live-rig-control`, these appear on the `msvp` page as:
+
+- an OSC-only scene row
+- a MIDI Ch 10 macro row
+- a MIDI Ch 15 analysis row
 
 ## 8) Syphon output
 

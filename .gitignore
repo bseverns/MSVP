@@ -2,6 +2,8 @@
 Thumbs.db
 
 *.class
+*.pyc
+__pycache__/
 out/
 build/
 

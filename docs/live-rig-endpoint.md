@@ -1,211 +1,152 @@
-# Integrating `videoProcessing-midi-sync` with `live-rig`
+# MSVP as a live-rig Endpoint
 
-This document describes how to treat `MidiVideoSyphonBeats` as a *visual endpoint*
-inside a larger performance system like `live-rig`.
+This document describes the aligned contract between three repos:
 
-The goal is to make this Processing sketch behave like another “visual instrument”
-in your graph:
+- `MSVP` as the visual endpoint
+- `live-rig` as the field manual and scene-sheet source
+- `live-rig-control` as the performer-facing controller surface
 
-- It listens to **MIDI clock** for transport.
-- It listens to **MIDI CCs** for control.
-- It exposes a **Syphon server** as its output, which can be routed into any
-  VJ tool or another Processing sketch.
+The goal is not just "can these talk?" but "do they describe the same stage
+surface with the same scene names, lane meanings, and transport rules?"
 
-This repo ships with two main modes:
+## Repo Roles
 
-1. **Generic mode** (this repository):
-   - No assumptions about channels or controllers.
-   - Simple, controller-agnostic CC mapping.
-2. **Rig-tuned mode** (optional in this repo via interop):
-   - Knows about specific devices (e.g. PCM-30 on Ch 10, frZone on Ch 15).
-   - Uses your macro / analysis lane semantics.
+### `MSVP`
 
-This document focuses on the *conceptual wiring* so you can map it cleanly
-from `live-rig` or any other routing system.
+`MidiVideoSyphonBeats` is the sink:
 
----
+- follows MIDI clock
+- accepts scene cues
+- accepts macro shaping on MIDI Ch `10`
+- accepts analysis bias on MIDI Ch `15`
+- publishes a Syphon stream
 
-## 1. Transport: MIDI Clock
+### `live-rig`
 
-`MidiVideoSyphonBeats` expects MIDI Clock messages:
+`live-rig` is the rig-level semantic sheet:
 
-- Message: `0xF8` (MIDI Clock).
-- Resolution: **24 ticks per beat**.
+- stable scene IDs
+- stable scene OSC addresses
+- stable fallback MIDI note assignments
+- transport ownership rules
 
-In `MidiVideoSyphonBeats.pde`:
+Its `mappings.json` should keep the MSVP scene vocabulary stable:
 
-```java
-int   ticksPerBeat = 24;
-int   tickCounter  = 0;
-long  lastBeatTimeMs = -1;
-long  beatCount = 0;
-float bpm = 100.0;
-```
+- `vid_scene_intro` -> `/video/scene/intro` -> note `60`
+- `vid_scene_crash` -> `/video/scene/crash` -> note `61`
+- `vid_scene_soft` -> `/video/scene/soft` -> note `62`
 
-Every 24 ticks it:
+### `live-rig-control`
 
-- Increments `beatCount`.
-- Estimates **BPM** from tick timing.
-- Smooths BPM using `bpmSmoothing` from `Config.pde`.
-- Sets `video.speed(bpm / 100.0)` so that:
+`live-rig-control` is the active emitter:
 
-  - `100 BPM → 1.0x speed`
-  - `50 BPM → 0.5x`
-  - `200 BPM → 2.0x`, etc.
+- `msvp` page for scene cues and shaping
+- scene row is OSC-primary
+- macro row emits MIDI CC on Ch `10`
+- analysis row emits MIDI CC on Ch `15`
 
-### How to feed clock from `live-rig`
+It intentionally does not double-fire scene changes through both OSC and MIDI on
+the main MSVP page.
 
-- If `live-rig` already sends MIDI clock to other devices:
-  - Add *one more* routing target pointing to this Processing sketch.
-- If you’re testing in isolation:
-  - Use the included `MidiClockSimulator` sketch.
-  - Route its MIDI **output** to the same virtual port that Processing listens to.
+## Stable Contract Surfaces
 
-The key invariant is: **this sketch does not own the transport**.
-It derives tempo from the same clock as the rest of your rig.
+The shared contract mirror is
+[contracts/msvp_live_rig_control.yaml](/Users/bseverns/Documents/GitHub/MSVP/contracts/msvp_live_rig_control.yaml).
 
----
+The local endpoint config that MSVP actually loads at runtime is
+[live_rig_interop.json](/Users/bseverns/Documents/GitHub/MSVP/MidiVideoSyphonBeats/data/live_rig_interop.json).
 
-## 2. Control: Macros vs. Generic CCs
+Those two files together should keep these surfaces fixed:
 
-In generic mode, `controllerChange()` is intentionally simple:
+1. Scene semantic IDs.
+2. Scene OSC addresses.
+3. Scene MIDI note fallback.
+4. Macro lane channel and CC meanings.
+5. Analysis lane channel and CC meanings.
+6. Transport ownership.
 
-- It responds to CCs **on any channel**.
-- It uses fixed mappings:
+## Transport Ownership
 
-  ```java
-  CC1 -> linesPerFrame
-  CC2 -> maxLineSize
-  CC3 -> opacityMin
-  CC4 -> effectIntervalBeats
-  CC5 -> effectDurationBeats
-  CC6 -> bpmSmoothing
-  CC7 -> effectBias
-  ```
+MSVP is follower-only.
 
-This makes it easy to:
+- Clock comes from upstream MIDI realtime.
+- Continuous shaping comes from MIDI CC.
+- Semantic scene commands are OSC-primary with MIDI note fallback.
+- If clock goes stale, MSVP holds the last derived BPM; it does not become the
+  transport owner.
 
-- Point *any* MIDI controller or routing node at the sketch.
-- Start sculpting the visuals without worrying about rig semantics yet.
+See [TRANSPORT_OWNERSHIP.md](/Users/bseverns/Documents/GitHub/MSVP/docs/TRANSPORT_OWNERSHIP.md).
 
-Rig mode is explicit. It only turns on when the interop contract sets
-`runtime.rigTunedMode` to `true`.
+## Scene Commands
 
-### When you integrate with `live-rig`
+Canonical scene contract:
 
-In your `live-rig` repo, you likely want a **tuned variant** of this sketch where:
+| Semantic ID | OSC | MIDI fallback |
+| --- | --- | --- |
+| `vid_scene_intro` | `/video/scene/intro` | Ch `10`, note `60` |
+| `vid_scene_crash` | `/video/scene/crash` | Ch `10`, note `61` |
+| `vid_scene_soft` | `/video/scene/soft` | Ch `10`, note `62` |
 
-- Macros from a specific device (e.g. PCM-30 on Ch 10) drive expressive controls:
-  - glitch / feedback / tunnel / density / brightness
-- Analysis from another lane (e.g. frZone on Ch 15) biases those parameters.
-- Channels and CCs match your mapping sheets.
+`live-rig-control` emits the OSC addresses on the `msvp` page.
+MSVP still listens for the note fallback path so manual/debug routing stays
+possible.
 
-That tuned variant can live alongside this generic one, but conceptually:
+## Continuous Shaping Lanes
 
-- `live-rig` decides **which CCs mean what**.
-- This sketch is a *sink* that converts those CCs into:
-  - Line density
-  - Line size
-  - Rotation depth
-  - Effect timing
-  - etc.
+Macro lane:
 
-To adapt this repo to your rig’s grammar:
+- transport: MIDI CC primary
+- channel: `10`
+- OSC equivalent: `/msvp/macro/<param>`
 
-1. Edit `MidiVideoSyphonBeats/data/live_rig_interop.json`.
-2. Set `runtime.rigTunedMode` to `true`.
-3. Map your profile pads to `/msvp/macro/<param>` and `/msvp/analysis/<param>` addresses.
-4. Set the preferred MIDI input and channels in `runtime`.
-5. Only fork the sketch code if your rig semantics exceed the current parameter model.
+Analysis lane:
 
----
+- transport: MIDI CC primary
+- channel: `15`
+- OSC equivalent: `/msvp/analysis/<param>`
 
-## 3. Output: Syphon as a Visual Node
+Shared parameter vocabulary for both lanes:
 
-`MidiVideoSyphonBeats` exposes its output as a Syphon server:
+- `linesPerFrame`
+- `maxLineSize`
+- `opacityMin`
+- `effectIntervalBeats`
+- `effectDurationBeats`
+- `bpmSmoothing`
+- `effectBias`
 
-```java
-syphonServer = new SyphonServer(this, "MidiVideoSyphonBeats");
-...
-syphonServer.sendScreen();
-```
+The meaning split matters:
 
-The important pieces for integration:
+- macro sets base intent
+- analysis adds bias on top
 
-- **Name**: `"MidiVideoSyphonBeats"` (you can change this).
-- **Topology**:
-  - Source: this Processing sketch.
-  - Receiver: any Syphon client (Resolume, MadMapper, another Processing sketch).
+## Output Surface
 
-For `live-rig`, you can treat this Syphon server as:
-
-- A leaf node in your visual graph (raw endpoint).
-- Or an intermediate node feeding into other tools for further processing.
-
-The included `SyphonClientTest` and `SyphonPostProcess` sketches show how to
-chain Syphon streams inside Processing itself.
-
----
-
-## 4. Typical Wiring Scenarios
-
-### A. DAW / Clock → `live-rig` → Processing
+MSVP publishes Syphon under:
 
 ```text
-[DAW or master clock]
-     │ (MIDI Clock + CC)
-     ├──> [live-rig routing / macros]
-     │        │
-     │        ├──> [other devices]
-     │        └──> [Processing: MidiVideoSyphonBeats]
-     │
-     └──> [audio path → frZone or analysis]
+MidiVideoSyphonBeats
 ```
 
-- `live-rig` sends:
-  - Clock → this sketch (direct or via loopback).
-  - CC macros → this sketch.
-- This sketch:
-  - Renders visuals based on those controls.
-  - Publishes a Syphon stream.
+That makes it a visual node downstream of the rig contract, not part of the
+controller contract itself.
 
-### B. Processing as a Visual Subsystem
+## Validation
 
-```text
-[live-rig] ──MIDI──> [Processing (MidiVideoSyphonBeats)]
-                  └─Syphon──> [Resolume / other VJ app]
+Run:
+
+```sh
+python3 scripts/validate_rig_interop.py
 ```
 
-You can also:
+That validates:
 
-- Add more Processing sketches as Syphon clients.
-- Treat each as a separate “visual instrument” in the rig.
+- this repo's shipped `live_rig_interop.json`
+- `../live-rig/mappings.json` when present
+- `../live-rig-control/src/mappings.json` when present
 
----
+If you only want to validate this repo in isolation:
 
-## 5. Recommended Files to Copy into `live-rig`
-
-When you integrate:
-
-- Copy `MidiVideoSyphonBeats/` into a suitable folder (e.g. `visuals/processing/`).
-- Copy `SyphonClientTest/` and `SyphonPostProcess/` if you want chained Processing nodes.
-- Optionally keep `MidiClockSimulator/` around as a local dev tool.
-
-Then:
-
-1. Add a note in `live-rig`’s docs linking to this repo.
-2. Document your rig-specific `controllerChange()` mapping.
-3. Treat this sketch like any other SCapp or visual endpoint in your graphs.
-
----
-
-## 6. Summary
-
-Conceptually, this sketch is:
-
-- A **clock-synced visual agent**, not a transport owner.
-- A **CC-controlled interpreter**, not a controller.
-- A **Syphon publisher**, not a compositor.
-
-`live-rig` is the conductor.
-This repo provides a musician that plays along in time.
+```sh
+python3 scripts/validate_rig_interop.py --local-only
+```

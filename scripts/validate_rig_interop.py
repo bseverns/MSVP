@@ -1,254 +1,370 @@
 #!/usr/bin/env python3
-"""Validate the shipped MSVP rig interop contract."""
+"""Validate MSVP's rig interop locally and against sibling live-rig repos."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
 
-EXPECTED_SCENES = {
-    "intro": {"note": 60, "address": "/video/scene/intro"},
-    "crash": {"note": 61, "address": "/video/scene/crash"},
-    "soft": {"note": 62, "address": "/video/scene/soft"},
-}
-
-EXPECTED_PARAMS = [
-    "linesPerFrame",
-    "maxLineSize",
-    "opacityMin",
-    "effectIntervalBeats",
-    "effectDurationBeats",
-    "bpmSmoothing",
-    "effectBias",
-]
+def load_json(path: Path) -> Any:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except FileNotFoundError:
+        raise SystemExit(f"Missing file: {path}")
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON/YAML in {path}: {exc}")
 
 
-def fail(errors: list[str], message: str) -> None:
-    errors.append(message)
+def add_mismatch(errors: list[str], scope: str, field: str, actual: Any, expected: Any) -> None:
+    errors.append(f"{scope}: {field} is {actual!r}, expected {expected!r}")
 
 
-def read_json(path: Path) -> Any:
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+def collect_pads(profile: dict[str, Any], scope: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    pads = profile.get("pads", [])
+    if not isinstance(pads, list):
+        return {}, [f"{scope}: pads must be a list"]
 
-
-def require_dict(value: Any, label: str, errors: list[str]) -> dict[str, Any]:
-    if isinstance(value, dict):
-        return value
-    fail(errors, f"{label} must be an object")
-    return {}
-
-
-def require_list(value: Any, label: str, errors: list[str]) -> list[Any]:
-    if isinstance(value, list):
-        return value
-    fail(errors, f"{label} must be an array")
-    return []
-
-
-def normalize_scene_name(pad: dict[str, Any]) -> str:
-    notes = str(pad.get("notes", "")).split()
-    for token in notes:
-        if token.startswith("preset:"):
-            return token.split(":", 1)[1].strip().lower()
-        if token.startswith("scene:"):
-            return token.split(":", 1)[1].strip().lower()
-    address = str(pad.get("osc", {}).get("address", ""))
-    prefix = "/video/scene/"
-    if address.startswith(prefix):
-        return address[len(prefix) :].strip().lower()
-    pad_id = str(pad.get("id", "")).lower()
-    if pad_id.startswith("vid_scene_"):
-        return pad_id[len("vid_scene_") :]
-    return ""
-
-
-def normalize_target(address: str, prefix: str) -> str:
-    if address.startswith(prefix):
-        return address[len(prefix) :]
-    return ""
-
-
-def validate_runtime(data: dict[str, Any], errors: list[str]) -> tuple[int | None, int | None]:
-    runtime = require_dict(data.get("runtime"), "runtime", errors)
-    midi = require_dict(runtime.get("midi"), "runtime.midi", errors)
-
-    if "rigTunedMode" not in runtime:
-        fail(errors, "runtime.rigTunedMode is required")
-    elif not isinstance(runtime["rigTunedMode"], bool):
-        fail(errors, "runtime.rigTunedMode must be boolean")
-
-    preferred_input = midi.get("preferredInput")
-    if not isinstance(preferred_input, str) or not preferred_input.strip():
-        fail(errors, "runtime.midi.preferredInput must be a non-empty string")
-
-    macro_channel = midi.get("macroChannel")
-    analysis_channel = midi.get("analysisChannel")
-    for key, value in (("macroChannel", macro_channel), ("analysisChannel", analysis_channel)):
-        if not isinstance(value, int):
-            fail(errors, f"runtime.midi.{key} must be an integer 1..16")
-        elif value < 1 or value > 16:
-            fail(errors, f"runtime.midi.{key} must be in 1..16")
-
-    if isinstance(macro_channel, int) and isinstance(analysis_channel, int):
-        if macro_channel == analysis_channel:
-            fail(errors, "runtime.midi.macroChannel and analysisChannel should be distinct")
-
-    return (
-        macro_channel if isinstance(macro_channel, int) else None,
-        analysis_channel if isinstance(analysis_channel, int) else None,
-    )
-
-
-def validate_profile(data: dict[str, Any], errors: list[str]) -> list[dict[str, Any]]:
-    profiles = require_dict(data.get("profiles"), "profiles", errors)
-    profile = require_dict(profiles.get("msvp"), "profiles.msvp", errors)
-    pads = require_list(profile.get("pads"), "profiles.msvp.pads", errors)
-
-    seen_ids: set[str] = set()
+    pads_by_id: dict[str, dict[str, Any]] = {}
+    errors: list[str] = []
     for pad in pads:
-        if not isinstance(pad, dict):
-            fail(errors, "each pad must be an object")
-            continue
         pad_id = pad.get("id")
-        if not isinstance(pad_id, str) or not pad_id.strip():
-            fail(errors, "each pad must have a non-empty id")
+        if not isinstance(pad_id, str) or not pad_id:
+            errors.append(f"{scope}: pad is missing a valid id")
             continue
-        if pad_id in seen_ids:
-            fail(errors, f"duplicate pad id: {pad_id}")
-        seen_ids.add(pad_id)
-
-    return [pad for pad in pads if isinstance(pad, dict)]
-
-
-def validate_scenes(pads: list[dict[str, Any]], macro_channel: int | None, errors: list[str]) -> None:
-    scene_pads = [pad for pad in pads if str(pad.get("midi", {}).get("type", "")) == "note"]
-    scenes_by_name = {normalize_scene_name(pad): pad for pad in scene_pads}
-
-    for scene_name, expected in EXPECTED_SCENES.items():
-        pad = scenes_by_name.get(scene_name)
-        if not pad:
-            fail(errors, f"missing scene pad for {scene_name}")
+        if pad_id in pads_by_id:
+            errors.append(f"{scope}: duplicate pad id '{pad_id}'")
             continue
-
-        midi = require_dict(pad.get("midi"), f"{pad.get('id')}.midi", errors)
-        osc = require_dict(pad.get("osc"), f"{pad.get('id')}.osc", errors)
-
-        if midi.get("channel") != macro_channel:
-            fail(errors, f"{pad['id']} should use macro channel {macro_channel}")
-        if midi.get("note") != expected["note"]:
-            fail(errors, f"{pad['id']} should use note {expected['note']}")
-        if osc.get("address") != expected["address"]:
-            fail(errors, f"{pad['id']} should use OSC {expected['address']}")
-        if osc.get("onArgs") != [1] or osc.get("offArgs") != [0]:
-            fail(errors, f"{pad['id']} should declare explicit OSC on/off args [1]/[0]")
+        pads_by_id[pad_id] = pad
+    return pads_by_id, errors
 
 
-def validate_lane(
-    pads: list[dict[str, Any]],
-    lane: str,
-    channel: int | None,
-    prefix: str,
+def validate_lane_by_contract(
     errors: list[str],
+    pads_by_id: dict[str, dict[str, Any]],
+    scope_prefix: str,
+    lane_name: str,
+    lane_contract: dict[str, Any],
+    *,
+    require_osc_binding: bool,
 ) -> None:
-    lane_pads = []
-    for pad in pads:
+    prefix = lane_contract["osc_equivalent_prefix"]
+    expected_channel = lane_contract["channel"]
+
+    for item in lane_contract["parameters"]:
+        pad_id = item["pad_id"]
+        pad = pads_by_id.get(pad_id)
+        if pad is None:
+            errors.append(f"{scope_prefix}: missing {lane_name} pad '{pad_id}'")
+            continue
+
         midi = pad.get("midi", {})
         osc = pad.get("osc", {})
+        scope = f"{scope_prefix}:{pad_id}"
+
         if midi.get("type") != "cc":
+            add_mismatch(errors, scope, "midi.type", midi.get("type"), "cc")
+        if midi.get("channel") != expected_channel:
+            add_mismatch(errors, scope, "midi.channel", midi.get("channel"), expected_channel)
+        if midi.get("cc") != item["cc"]:
+            add_mismatch(errors, scope, "midi.cc", midi.get("cc"), item["cc"])
+        if require_osc_binding and osc.get("address") != prefix + item["name"]:
+            add_mismatch(errors, scope, "osc.address", osc.get("address"), prefix + item["name"])
+
+    for pad_id, pad in pads_by_id.items():
+        if not pad_id.startswith(lane_name + "_") and not pad_id.startswith("msvp_" + lane_name + "_"):
             continue
-        address = str(osc.get("address", ""))
-        if not address.startswith(prefix):
+        if pad_id not in {item["pad_id"] for item in lane_contract["parameters"]}:
+            errors.append(f"{scope_prefix}: unknown {lane_name} pad '{pad_id}'")
+
+
+def validate_msvp(interop_path: Path, contract: dict[str, Any]) -> tuple[list[str], list[str]]:
+    data = load_json(interop_path)
+    if not isinstance(data, dict):
+        return [f"{interop_path}: root must be an object"], []
+
+    runtime = data.get("runtime", {})
+    if not isinstance(runtime, dict):
+        return [f"{interop_path}: runtime must be an object"], []
+    midi_runtime = runtime.get("midi", {})
+    if not isinstance(midi_runtime, dict):
+        return [f"{interop_path}: runtime.midi must be an object"], []
+
+    profiles = data.get("profiles", {})
+    if not isinstance(profiles, dict):
+        return [f"{interop_path}: missing profiles object"], []
+    profile = profiles.get("msvp")
+    if not isinstance(profile, dict):
+        return [f"{interop_path}: missing profile 'msvp'"], []
+
+    pads_by_id, profile_errors = collect_pads(profile, str(interop_path))
+    errors = list(profile_errors)
+    checks: list[str] = []
+
+    scene_contract = contract["controls"]["scene_triggers"]
+    macro_contract = contract["controls"]["macro_lane"]
+    analysis_contract = contract["controls"]["analysis_lane"]
+
+    if runtime.get("profile") != "msvp":
+        add_mismatch(errors, str(interop_path), "runtime.profile", runtime.get("profile"), "msvp")
+    if not isinstance(runtime.get("rigTunedMode"), bool):
+        errors.append(f"{interop_path}: runtime.rigTunedMode must be boolean")
+    if midi_runtime.get("macroChannel") != macro_contract["channel"]:
+        add_mismatch(
+            errors,
+            str(interop_path),
+            "runtime.midi.macroChannel",
+            midi_runtime.get("macroChannel"),
+            macro_contract["channel"],
+        )
+    if midi_runtime.get("analysisChannel") != analysis_contract["channel"]:
+        add_mismatch(
+            errors,
+            str(interop_path),
+            "runtime.midi.analysisChannel",
+            midi_runtime.get("analysisChannel"),
+            analysis_contract["channel"],
+        )
+
+    for scene in scene_contract["scenes"]:
+        scene_id = scene["semantic_id"]
+        pad = pads_by_id.get(scene_id)
+        if pad is None:
+            errors.append(f"{interop_path}: missing scene pad '{scene_id}'")
             continue
-        lane_pads.append(pad)
 
-    params_seen: dict[str, int] = {}
-    ccs_seen: set[int] = set()
+        midi = pad.get("midi", {})
+        osc = pad.get("osc", {})
+        group = pad.get("group", {})
+        scope = f"{interop_path}:{scene_id}"
 
-    for pad in lane_pads:
-        midi = require_dict(pad.get("midi"), f"{pad.get('id')}.midi", errors)
-        osc = require_dict(pad.get("osc"), f"{pad.get('id')}.osc", errors)
-        cc = midi.get("cc")
-        address = str(osc.get("address", ""))
-        target = normalize_target(address, prefix)
-
-        if midi.get("channel") != channel:
-            fail(errors, f"{pad['id']} should use {lane} channel {channel}")
-        if not isinstance(cc, int) or cc < 1 or cc > 7:
-            fail(errors, f"{pad['id']} should use CC 1..7")
-        elif cc in ccs_seen:
-            fail(errors, f"{lane} lane reuses CC {cc}")
+        if midi.get("type") != "note":
+            add_mismatch(errors, scope, "midi.type", midi.get("type"), "note")
+        if midi.get("channel") != scene_contract["msvp_receive_channel"]:
+            add_mismatch(errors, scope, "midi.channel", midi.get("channel"), scene_contract["msvp_receive_channel"])
+        if midi.get("note") != scene["midi_note"]:
+            add_mismatch(errors, scope, "midi.note", midi.get("note"), scene["midi_note"])
+        if osc.get("address") != scene["osc_address"]:
+            add_mismatch(errors, scope, "osc.address", osc.get("address"), scene["osc_address"])
+        if osc.get("onArgs") != [1] or osc.get("offArgs") != [0]:
+            errors.append(f"{scope}: osc toggle payload must be [1]/[0]")
+        if isinstance(group, dict):
+            if group.get("id") != "msvp_scene":
+                add_mismatch(errors, scope, "group.id", group.get("id"), "msvp_scene")
         else:
-            ccs_seen.add(cc)
+            errors.append(f"{scope}: group must be an object")
 
-        if target not in EXPECTED_PARAMS:
-            fail(errors, f"{pad['id']} has unsupported {lane} target {target!r}")
-        elif target in params_seen:
-            fail(errors, f"{lane} lane repeats target {target}")
-        else:
-            params_seen[target] = cc
+    for pad_id in sorted(pads_by_id):
+        if pad_id.startswith("vid_scene_") and pad_id not in {scene["semantic_id"] for scene in scene_contract["scenes"]}:
+            errors.append(f"{interop_path}: unknown semantic scene pad '{pad_id}'")
 
-        args = osc.get("args")
-        if not isinstance(args, list) or len(args) != 1 or not isinstance(args[0], (int, float)):
-            fail(errors, f"{pad['id']} should declare one numeric OSC arg placeholder")
+    validate_lane_by_contract(
+        errors,
+        pads_by_id,
+        str(interop_path),
+        "macro",
+        macro_contract,
+        require_osc_binding=True,
+    )
+    validate_lane_by_contract(
+        errors,
+        pads_by_id,
+        str(interop_path),
+        "analysis",
+        analysis_contract,
+        require_osc_binding=True,
+    )
 
-    if len(lane_pads) != len(EXPECTED_PARAMS):
-        fail(errors, f"{lane} lane should define {len(EXPECTED_PARAMS)} pads, found {len(lane_pads)}")
+    if not errors:
+        checks.append(
+            f"{interop_path}: profile 'msvp' matches canonical scenes plus macro ch {macro_contract['channel']} and analysis ch {analysis_contract['channel']}"
+        )
+        checks.append(
+            f"{interop_path}: endpoint exposes {len(macro_contract['parameters'])} macro and {len(analysis_contract['parameters'])} analysis controls with controller-aligned IDs"
+        )
 
-    missing_params = [param for param in EXPECTED_PARAMS if param not in params_seen]
-    if missing_params:
-        fail(errors, f"{lane} lane missing targets: {', '.join(missing_params)}")
+    return errors, checks
 
-    for index, param in enumerate(EXPECTED_PARAMS, start=1):
-        if params_seen.get(param) != index:
-            fail(errors, f"{lane} lane should map CC{index} to {param}")
+
+def validate_live_rig(live_rig_path: Path, contract: dict[str, Any]) -> tuple[list[str], list[str]]:
+    data = load_json(live_rig_path)
+    mappings = data.get("mappings")
+    if not isinstance(mappings, list):
+        return [f"{live_rig_path}: mappings must be a list"], []
+
+    mappings_by_id = {mapping.get("id"): mapping for mapping in mappings if isinstance(mapping, dict)}
+    errors: list[str] = []
+    checks: list[str] = []
+    scene_contract = contract["controls"]["scene_triggers"]
+
+    for scene in scene_contract["scenes"]:
+      mapping = mappings_by_id.get(scene["semantic_id"])
+      if mapping is None:
+          errors.append(f"{live_rig_path}: missing scene mapping '{scene['semantic_id']}'")
+          continue
+      midi = mapping.get("midi", {})
+      osc = mapping.get("osc", {})
+      scope = f"{live_rig_path}:{scene['semantic_id']}"
+      if midi.get("type") != "note":
+          add_mismatch(errors, scope, "midi.type", midi.get("type"), "note")
+      if midi.get("channel") != scene_contract["msvp_receive_channel"]:
+          add_mismatch(errors, scope, "midi.channel", midi.get("channel"), scene_contract["msvp_receive_channel"])
+      if midi.get("note") != scene["midi_note"]:
+          add_mismatch(errors, scope, "midi.note", midi.get("note"), scene["midi_note"])
+      if osc.get("address") != scene["osc_address"]:
+          add_mismatch(errors, scope, "osc.address", osc.get("address"), scene["osc_address"])
+
+    if not errors:
+        checks.append(f"{live_rig_path}: scene mappings match the canonical MSVP scene IDs, notes, and OSC addresses")
+    return errors, checks
+
+
+def validate_live_rig_control(control_path: Path, contract: dict[str, Any]) -> tuple[list[str], list[str]]:
+    data = load_json(control_path)
+    profiles = data.get("profiles")
+    if not isinstance(profiles, dict):
+        return [f"{control_path}: missing profiles object"], []
+
+    controller = contract["controller_surface"]
+    profile = profiles.get(controller["profile_id"])
+    if not isinstance(profile, dict):
+        return [f"{control_path}: missing profile '{controller['profile_id']}'"], []
+
+    pads_by_id, pad_errors = collect_pads(profile, str(control_path))
+    errors = list(pad_errors)
+    checks: list[str] = []
+
+    if profile.get("label") != controller["label"]:
+        add_mismatch(errors, f"{control_path}:{controller['profile_id']}", "label", profile.get("label"), controller["label"])
+    if profile.get("section") != controller["section"]:
+        add_mismatch(errors, f"{control_path}:{controller['profile_id']}", "section", profile.get("section"), controller["section"])
+    if profile.get("order") != controller["order"]:
+        add_mismatch(errors, f"{control_path}:{controller['profile_id']}", "order", profile.get("order"), controller["order"])
+
+    scene_contract = contract["controls"]["scene_triggers"]
+    for scene in scene_contract["scenes"]:
+        scene_id = scene["semantic_id"]
+        pad = pads_by_id.get(scene_id)
+        if pad is None:
+            errors.append(f"{control_path}: missing scene pad '{scene_id}'")
+            continue
+        osc = pad.get("osc", {})
+        if osc.get("address") != scene["osc_address"]:
+            add_mismatch(errors, f"{control_path}:{scene_id}", "osc.address", osc.get("address"), scene["osc_address"])
+        if "midi" in pad:
+            errors.append(f"{control_path}:{scene_id}: controller profile should keep scene transport OSC-only")
+
+    validate_lane_by_contract(
+        errors,
+        pads_by_id,
+        str(control_path),
+        "macro",
+        contract["controls"]["macro_lane"],
+        require_osc_binding=False,
+    )
+    validate_lane_by_contract(
+        errors,
+        pads_by_id,
+        str(control_path),
+        "analysis",
+        contract["controls"]["analysis_lane"],
+        require_osc_binding=False,
+    )
+
+    for item in contract["controls"]["macro_lane"]["parameters"] + contract["controls"]["analysis_lane"]["parameters"]:
+        pad = pads_by_id.get(item["pad_id"])
+        if pad is not None and "osc" in pad:
+            errors.append(f"{control_path}:{item['pad_id']}: controller lane pads should not emit OSC mirrors")
+
+    if not errors:
+        checks.append(
+            f"{control_path}: profile 'msvp' matches OSC scene cues plus macro ch {contract['controls']['macro_lane']['channel']} and analysis ch {contract['controls']['analysis_lane']['channel']}"
+        )
+        checks.append(f"{control_path}: controller keeps scenes OSC-only and exposes the canonical 7+7 shaping controls")
+    return errors, checks
+
+
+def parse_args() -> tuple[argparse.Namespace, Path, Path, Path]:
+    repo_root = Path(__file__).resolve().parents[1]
+    default_contract = repo_root / "contracts" / "msvp_live_rig_control.yaml"
+    default_live_rig = repo_root.parent / "live-rig" / "mappings.json"
+    default_live_rig_control = repo_root.parent / "live-rig-control" / "src" / "mappings.json"
+    default_msvp = repo_root / "MidiVideoSyphonBeats" / "data" / "live_rig_interop.json"
+
+    parser = argparse.ArgumentParser(
+        description="Validate MSVP's rig interop and optionally check sibling live-rig repos against the shared contract."
+    )
+    parser.add_argument("--contract", type=Path, default=default_contract, help="Path to the canonical contract file.")
+    parser.add_argument("--msvp-interop", type=Path, default=default_msvp, help="Path to MSVP's live_rig_interop.json.")
+    parser.add_argument(
+        "--live-rig-mappings",
+        type=Path,
+        default=None,
+        help="Optional path to live-rig/mappings.json. Defaults to ../live-rig/mappings.json when available.",
+    )
+    parser.add_argument(
+        "--live-rig-control-mappings",
+        type=Path,
+        default=None,
+        help="Optional path to live-rig-control/src/mappings.json. Defaults to ../live-rig-control/src/mappings.json when available.",
+    )
+    parser.add_argument(
+        "--local-only",
+        action="store_true",
+        help="Validate only MSVP's local interop file and skip sibling repo checks.",
+    )
+    return parser.parse_args(), default_live_rig, default_live_rig_control, default_msvp
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
-    default_path = repo_root / "MidiVideoSyphonBeats" / "data" / "live_rig_interop.json"
-    path = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else default_path
-
-    if not path.exists():
-        print(f"ERROR: contract file not found: {path}")
-        return 1
-
-    try:
-        data = read_json(path)
-    except json.JSONDecodeError as exc:
-        print(f"ERROR: invalid JSON in {path}: {exc}")
+    args, default_live_rig, default_live_rig_control, _default_msvp = parse_args()
+    contract_root = load_json(args.contract)
+    contract = contract_root.get("contract")
+    if not isinstance(contract, dict):
+        print(f"ERROR {args.contract}: missing top-level 'contract' object")
         return 1
 
     errors: list[str] = []
+    checks: list[str] = [f"Contract {contract['name']} v{contract['version']}"]
 
-    if not isinstance(data, dict):
-        print(f"ERROR: root value in {path} must be an object")
-        return 1
+    target_errors, target_checks = validate_msvp(args.msvp_interop, contract)
+    errors.extend(target_errors)
+    checks.extend(target_checks)
 
-    macro_channel, analysis_channel = validate_runtime(data, errors)
-    pads = validate_profile(data, errors)
-    validate_scenes(pads, macro_channel, errors)
-    validate_lane(pads, "macro", macro_channel, "/msvp/macro/", errors)
-    validate_lane(pads, "analysis", analysis_channel, "/msvp/analysis/", errors)
+    if not args.local_only:
+        live_rig_path = args.live_rig_mappings or default_live_rig
+        if live_rig_path.exists():
+            target_errors, target_checks = validate_live_rig(live_rig_path, contract)
+            errors.extend(target_errors)
+            checks.extend(target_checks)
+        else:
+            checks.append(f"{live_rig_path}: skipped (not found)")
+
+        control_path = args.live_rig_control_mappings or default_live_rig_control
+        if control_path.exists():
+            target_errors, target_checks = validate_live_rig_control(control_path, contract)
+            errors.extend(target_errors)
+            checks.extend(target_checks)
+        else:
+            checks.append(f"{control_path}: skipped (not found)")
 
     if errors:
-        print(f"FAIL {path}")
-        for error in errors:
-            print(f"- {error}")
+        print("FAIL")
+        for item in checks:
+            print(f"  {item}")
+        for item in errors:
+            print(f"  ERROR: {item}")
         return 1
 
-    print(f"OK   {path}")
-    print(f"- rigTunedMode: {data['runtime']['rigTunedMode']}")
-    print(f"- preferredInput: {data['runtime']['midi']['preferredInput']}")
-    print(f"- channels: macro={macro_channel} analysis={analysis_channel}")
-    print(f"- scenes: {', '.join(EXPECTED_SCENES.keys())}")
-    print(f"- macro params: {', '.join(EXPECTED_PARAMS)}")
-    print(f"- analysis params: {', '.join(EXPECTED_PARAMS)}")
+    print("PASS")
+    for item in checks:
+        print(f"  {item}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

@@ -306,6 +306,8 @@ String deriveInteropLane(JSONObject pad) {
   if (address.startsWith("/msvp/analysis/")) return "analysis";
 
   String padId = readString(pad, "id");
+  if (padId.startsWith("msvp_macro_")) return "macro";
+  if (padId.startsWith("msvp_analysis_")) return "analysis";
   if (padId.startsWith("macro_")) return "macro";
   if (padId.startsWith("analysis_")) return "analysis";
 
@@ -328,6 +330,12 @@ String deriveInteropTarget(JSONObject pad) {
   }
 
   String padId = readString(pad, "id");
+  if (padId.startsWith("msvp_macro_")) {
+    return padId.substring("msvp_macro_".length());
+  }
+  if (padId.startsWith("msvp_analysis_")) {
+    return padId.substring("msvp_analysis_".length());
+  }
   if (padId.startsWith("macro_")) {
     return padId.substring("macro_".length());
   }

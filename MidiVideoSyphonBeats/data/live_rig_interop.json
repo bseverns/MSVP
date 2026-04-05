@@ -16,15 +16,23 @@
   },
   "profiles": {
     "msvp": {
-      "label": "MSVP live-rig endpoint",
+      "label": "MSVP",
+      "gridSize": [
+        8,
+        3
+      ],
       "pads": [
         {
           "id": "vid_scene_intro",
           "label": "Scene Intro",
+          "row": 0,
+          "col": 0,
+          "toggle": true,
           "mode": "toggle",
           "group": {
-            "id": "msvp_scenes",
-            "mode": "exclusive"
+            "id": "msvp_scene",
+            "mode": "exclusive",
+            "exclusive": true
           },
           "midi": {
             "type": "note",
@@ -35,6 +43,9 @@
           },
           "osc": {
             "address": "/video/scene/intro",
+            "args": [
+              1
+            ],
             "onArgs": [
               1
             ],
@@ -47,10 +58,14 @@
         {
           "id": "vid_scene_crash",
           "label": "Scene Crash",
+          "row": 0,
+          "col": 1,
+          "toggle": true,
           "mode": "toggle",
           "group": {
-            "id": "msvp_scenes",
-            "mode": "exclusive"
+            "id": "msvp_scene",
+            "mode": "exclusive",
+            "exclusive": true
           },
           "midi": {
             "type": "note",
@@ -61,6 +76,9 @@
           },
           "osc": {
             "address": "/video/scene/crash",
+            "args": [
+              1
+            ],
             "onArgs": [
               1
             ],
@@ -73,10 +91,14 @@
         {
           "id": "vid_scene_soft",
           "label": "Scene Soft",
+          "row": 0,
+          "col": 2,
+          "toggle": true,
           "mode": "toggle",
           "group": {
-            "id": "msvp_scenes",
-            "mode": "exclusive"
+            "id": "msvp_scene",
+            "mode": "exclusive",
+            "exclusive": true
           },
           "midi": {
             "type": "note",
@@ -87,6 +109,9 @@
           },
           "osc": {
             "address": "/video/scene/soft",
+            "args": [
+              1
+            ],
             "onArgs": [
               1
             ],
@@ -97,8 +122,10 @@
           "notes": "contract:rig scene:soft preset:soft noteOff:neutral"
         },
         {
-          "id": "macro_lines_per_frame",
-          "label": "Macro Lines Per Frame",
+          "id": "msvp_macro_lines_per_frame",
+          "label": "Macro Density (CC1)",
+          "row": 1,
+          "col": 0,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -113,8 +140,10 @@
           "notes": "contract:rig lane:macro target:linesPerFrame normalized:0..1"
         },
         {
-          "id": "macro_max_line_size",
-          "label": "Macro Max Line Size",
+          "id": "msvp_macro_max_line_size",
+          "label": "Macro Line Size (CC2)",
+          "row": 1,
+          "col": 1,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -129,8 +158,10 @@
           "notes": "contract:rig lane:macro target:maxLineSize normalized:0..1"
         },
         {
-          "id": "macro_opacity_min",
-          "label": "Macro Opacity Min",
+          "id": "msvp_macro_opacity_min",
+          "label": "Macro Opacity Floor (CC3)",
+          "row": 1,
+          "col": 2,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -145,8 +176,10 @@
           "notes": "contract:rig lane:macro target:opacityMin normalized:0..1"
         },
         {
-          "id": "macro_effect_interval_beats",
-          "label": "Macro Effect Interval Beats",
+          "id": "msvp_macro_effect_interval_beats",
+          "label": "Macro FX Interval (CC4)",
+          "row": 1,
+          "col": 3,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -161,8 +194,10 @@
           "notes": "contract:rig lane:macro target:effectIntervalBeats normalized:0..1"
         },
         {
-          "id": "macro_effect_duration_beats",
-          "label": "Macro Effect Duration Beats",
+          "id": "msvp_macro_effect_duration_beats",
+          "label": "Macro FX Duration (CC5)",
+          "row": 1,
+          "col": 4,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -177,8 +212,10 @@
           "notes": "contract:rig lane:macro target:effectDurationBeats normalized:0..1"
         },
         {
-          "id": "macro_bpm_smoothing",
-          "label": "Macro BPM Smoothing",
+          "id": "msvp_macro_bpm_smoothing",
+          "label": "Macro BPM Smooth (CC6)",
+          "row": 1,
+          "col": 5,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -193,8 +230,10 @@
           "notes": "contract:rig lane:macro target:bpmSmoothing normalized:0..1"
         },
         {
-          "id": "macro_effect_bias",
-          "label": "Macro Effect Bias",
+          "id": "msvp_macro_effect_bias",
+          "label": "Macro FX Bias (CC7)",
+          "row": 1,
+          "col": 6,
           "midi": {
             "type": "cc",
             "channel": 10,
@@ -209,8 +248,10 @@
           "notes": "contract:rig lane:macro target:effectBias normalized:0..1"
         },
         {
-          "id": "analysis_lines_per_frame",
-          "label": "Analysis Lines Per Frame Bias",
+          "id": "msvp_analysis_lines_per_frame",
+          "label": "Analysis Density Bias (CC1)",
+          "row": 2,
+          "col": 0,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -225,8 +266,10 @@
           "notes": "contract:rig lane:analysis target:linesPerFrame normalized:0..1"
         },
         {
-          "id": "analysis_max_line_size",
-          "label": "Analysis Max Line Size Bias",
+          "id": "msvp_analysis_max_line_size",
+          "label": "Analysis Line Size Bias (CC2)",
+          "row": 2,
+          "col": 1,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -241,8 +284,10 @@
           "notes": "contract:rig lane:analysis target:maxLineSize normalized:0..1"
         },
         {
-          "id": "analysis_opacity_min",
-          "label": "Analysis Opacity Min Bias",
+          "id": "msvp_analysis_opacity_min",
+          "label": "Analysis Opacity Bias (CC3)",
+          "row": 2,
+          "col": 2,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -257,8 +302,10 @@
           "notes": "contract:rig lane:analysis target:opacityMin normalized:0..1"
         },
         {
-          "id": "analysis_effect_interval_beats",
-          "label": "Analysis Effect Interval Beats Bias",
+          "id": "msvp_analysis_effect_interval_beats",
+          "label": "Analysis FX Interval Bias (CC4)",
+          "row": 2,
+          "col": 3,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -273,8 +320,10 @@
           "notes": "contract:rig lane:analysis target:effectIntervalBeats normalized:0..1"
         },
         {
-          "id": "analysis_effect_duration_beats",
-          "label": "Analysis Effect Duration Beats Bias",
+          "id": "msvp_analysis_effect_duration_beats",
+          "label": "Analysis FX Duration Bias (CC5)",
+          "row": 2,
+          "col": 4,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -289,8 +338,10 @@
           "notes": "contract:rig lane:analysis target:effectDurationBeats normalized:0..1"
         },
         {
-          "id": "analysis_bpm_smoothing",
-          "label": "Analysis BPM Smoothing Bias",
+          "id": "msvp_analysis_bpm_smoothing",
+          "label": "Analysis BPM Smooth (CC6)",
+          "row": 2,
+          "col": 5,
           "midi": {
             "type": "cc",
             "channel": 15,
@@ -305,8 +356,10 @@
           "notes": "contract:rig lane:analysis target:bpmSmoothing normalized:0..1"
         },
         {
-          "id": "analysis_effect_bias",
-          "label": "Analysis Effect Bias",
+          "id": "msvp_analysis_effect_bias",
+          "label": "Analysis FX Bias (CC7)",
+          "row": 2,
+          "col": 6,
           "midi": {
             "type": "cc",
             "channel": 15,
