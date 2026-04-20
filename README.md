@@ -1,7 +1,7 @@
-# MSVP / MidiVideoSyphonBeats
+# MSVP / MIDI Syphon Video Playback
 
 Formerly `videoProcessing-midi-sync`, this repo is the MSVP visual endpoint used
-alongside `live-rig` and `live-rig-control`.
+alongside `live-rig`, `live-rig-control`, and correspondent video processing repos.
 
 Processing sketches for live video processing with:
 
