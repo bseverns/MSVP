@@ -21,11 +21,11 @@ void setup() {
   textAlign(LEFT, TOP);
 
   MidiBus.list();
-  // Validate both input + output lists before we even attempt MidiBus init.
-  if (!hasNonEmptyMidiDeviceLists()) {
+  // The monitor only consumes MIDI clock, so validate inputs only.
+  if (!hasNonEmptyMidiInputDeviceList()) {
     midiReady = false;
     midiDeviceListsEmpty = true;
-    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    midiStatusMessage = NO_VALID_MIDI_INPUT_DEVICES_MESSAGE;
     return;
   }
   int[] midiInputCandidates = buildMidiInputCandidates(new String[] { "Bus 1", "IAC" }, 1); // fallback: console index for IAC/Bus 1
@@ -40,19 +40,13 @@ void setup() {
       String inputLabel = (inputs != null && midiInputIndex >= 0 && midiInputIndex < inputs.length)
         ? inputs[midiInputIndex]
         : ("index " + midiInputIndex);
-      try {
-        midiBus = new MidiBus(this, midiInputIndex, -1);
+      midiBus = safeInputMidiBus(midiInputIndex);
+      if (midiBus != null) {
         midiReady = true;
         midiInitialized = true;
         break;
-      } catch (Throwable e) {
+      } else {
         println("MIDI init failed for input " + inputLabel + ".");
-        println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-        println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-        println("virtual loopback device is installed.");
-        println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-        println("hardware device index from MidiBus.list(), then update the indices above.");
-        e.printStackTrace();
       }
     }
 
@@ -100,7 +94,7 @@ void drawNoValidMidiBanner() {
   textAlign(LEFT, TOP);
   textSize(14);
   String bannerMessage = midiDeviceListsEmpty
-    ? NO_VALID_MIDI_DEVICES_MESSAGE
+    ? midiStatusMessage
     : "No valid MIDI ports detected";
   text(bannerMessage, 10, 6);
   popStyle();

@@ -56,9 +56,14 @@ VJ app
 ## Rig-tuned quickstart (live-rig + live-rig-control)
 
 If you want the rig-tuned endpoint variant, start here:
-`docs/rig-tuned-quickstart.md`.
+[Rig-tuned quickstart](docs/rig-tuned-quickstart.md).
 
-The shared contract artifact lives at `contracts/msvp_live_rig_control.yaml`.
+Use the [rig smoke test](docs/RIG_SMOKE_TEST.md) before rehearsal or show runs,
+and keep [transport ownership](docs/TRANSPORT_OWNERSHIP.md) clear when routing
+clock and transport.
+
+The shared contract artifact lives at
+[contracts/msvp_live_rig_control.yaml](contracts/msvp_live_rig_control.yaml).
 It mirrors the controller-side contract in `live-rig-control` so the endpoint,
 controller, and scene sheet can be validated together.
 
@@ -145,6 +150,12 @@ python3 scripts/validate_rig_interop.py
 
 If sibling `live-rig` and `live-rig-control` checkouts exist beside this repo,
 the same command also checks their MSVP-facing contract surfaces.
+GitHub Actions runs the dependency-free local contract check on pull requests
+and pushes to `main`:
+
+```sh
+python3 scripts/validate_rig_interop.py --local-only
+```
 
 ---
 
@@ -226,10 +237,11 @@ video = new Movie(this, "your-video-name.mp4");
    MidiBus.list();
    ```
 
-4. By default, the sketches try the interop file’s preferred MIDI input first, then common loopback names like `Bus 1` and `IAC`.
+4. By default, `MidiVideoSyphonBeats` tries the interop file’s preferred MIDI input first, then common loopback names like `Bus 1` and `IAC`.
 5. If you want to force a specific device, update `runtime.midi.preferredInput` in `MidiVideoSyphonBeats/data/live_rig_interop.json`.
 
-`MidiClockMonitor` and `MidiClockSimulator` use the same candidate-selection logic.
+`MidiClockMonitor` uses the same input candidate-selection logic.
+`MidiClockSimulator` uses the same loopback hints for output selection.
 
 ### 2.5. MIDI device gotchas (aka: why “Real Time Sequencer” bites you)
 
@@ -245,10 +257,12 @@ to open it.
 - Route your DAW/simulator into that virtual port.
 - Use the virtual port’s **index** in the sketch.
 
-Each sketch now uses a tiny `safeMidiBus(...)` helper that catches the NPE, prints
-why it failed, and keeps the window open so you can read the console. It won’t
-magically conjure a MIDI port, but it will stop the hard crash and tell you
-exactly what to fix.
+Each sketch now uses direction-specific helpers (`safeInputMidiBus(...)`,
+`safeOutputMidiBus(...)`, or `safeInputOutputMidiBus(...)`) that catch the NPE,
+print why init failed, and keep the window open so you can read the console.
+Input-only sketches validate inputs only; output-oriented sketches validate
+outputs only. The helpers won’t magically conjure a MIDI port, but they will
+stop the hard crash and tell you exactly what to fix.
 
 ### Shared MIDI helper pattern (aka “keep it in lockstep”)
 

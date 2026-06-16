@@ -1,0 +1,18 @@
+name: MSVP
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate-rig-interop:
+    name: Validate rig interop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate local rig contract
+        run: python3 scripts/validate_rig_interop.py --local-only

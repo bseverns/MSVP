@@ -21,7 +21,8 @@
 
 ### MidiVideoSyphonBeats/MidiHelpers.pde
 - Shared MIDI helpers to avoid the "Real Time Sequencer" trap.
-- Validates that input/output lists contain real names.
+- Validates input-only, output-only, or both-required MIDI device lists depending
+  on the sketch's role.
 - Builds candidate indices from name hints and a fallback index; always filters out "Real Time Sequencer".
 - Provides `findMidiInputIndex` / `findMidiOutputIndex` helpers for other sketches.
 

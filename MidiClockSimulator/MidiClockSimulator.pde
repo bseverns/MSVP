@@ -31,11 +31,11 @@ void setup() {
   computeMsPerTick();
 
   MidiBus.list();
-  // Validate both input + output lists before we even attempt MidiBus init.
-  if (!hasNonEmptyMidiDeviceLists()) {
+  // The simulator is output-oriented; missing input ports should not block it.
+  if (!hasNonEmptyMidiOutputDeviceList()) {
     midiReady = false;
     midiDeviceListsEmpty = true;
-    midiStatusMessage = NO_VALID_MIDI_DEVICES_MESSAGE;
+    midiStatusMessage = NO_VALID_MIDI_OUTPUT_DEVICES_MESSAGE;
   }
   if (!midiDeviceListsEmpty) {
     // Choose correct MIDI output index (virtual loopback, or hardware/DAW input)
@@ -53,20 +53,14 @@ void setup() {
         String outputLabel = (outputs != null && midiOutputIndex >= 0 && midiOutputIndex < outputs.length)
           ? outputs[midiOutputIndex]
           : ("index " + midiOutputIndex);
-        try {
-          midiOut = new MidiBus(this, -1, midiOutputIndex);
+        midiOut = safeOutputMidiBus(midiOutputIndex);
+        if (midiOut != null) {
           midiReady = true;
           midiInitialized = true;
           selectedOutputLabel = outputLabel;
           break;
-        } catch (Throwable e) {
+        } else {
           println("MIDI init failed for output " + outputLabel + ".");
-          println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-          println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-          println("virtual loopback device is installed.");
-          println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-          println("hardware device index from MidiBus.list(), then update the indices above.");
-          e.printStackTrace();
         }
       }
 
@@ -139,7 +133,7 @@ void drawNoValidMidiBanner() {
   textAlign(LEFT, TOP);
   textSize(14);
   String bannerMessage = midiDeviceListsEmpty
-    ? NO_VALID_MIDI_DEVICES_MESSAGE
+    ? midiStatusMessage
     : "No valid MIDI ports detected";
   text(bannerMessage, 10, 6);
   popStyle();

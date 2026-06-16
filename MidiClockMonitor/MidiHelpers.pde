@@ -5,28 +5,94 @@
 // to keep every sketch behaving identically.
 
 final String NO_VALID_MIDI_DEVICES_MESSAGE = "No valid MIDI devices detected (Rosetta/MIDI bug?)";
+final String NO_VALID_MIDI_INPUT_DEVICES_MESSAGE = "No valid MIDI input devices detected (Rosetta/MIDI bug?)";
+final String NO_VALID_MIDI_OUTPUT_DEVICES_MESSAGE = "No valid MIDI output devices detected (Rosetta/MIDI bug?)";
 final String NO_USABLE_MIDI_INPUTS_MESSAGE = "No usable MIDI input ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).";
 final String NO_USABLE_MIDI_OUTPUTS_MESSAGE = "No usable MIDI output ports detected (only Java's \"Real Time Sequencer\"). Create a virtual loopback port (IAC on macOS, loopMIDI on Windows).";
 
-MidiBus safeMidiBus(int inputIndex, int outputIndex) {
+MidiBus safeInputMidiBus(int inputIndex) {
   try {
-    if (!hasNonEmptyMidiDeviceLists()) {
-      println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
+    if (!hasNonEmptyMidiInputDeviceList()) {
+      println(NO_VALID_MIDI_INPUT_DEVICES_MESSAGE + " Skipping MidiBus input init.");
       return null;
     }
-    return new MidiBus(this, inputIndex, outputIndex);
+    if (!isUsableMidiPortIndex(MidiBus.availableInputs(), inputIndex)) {
+      println(NO_USABLE_MIDI_INPUTS_MESSAGE + " Skipping MidiBus input init.");
+      return null;
+    }
+    return new MidiBus(this, inputIndex, -1);
   } catch (Throwable e) {
-    println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
-    println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
-    println("virtual loopback device is installed.");
-    println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
-    println("hardware device index from MidiBus.list(), then update the indices above.");
-    e.printStackTrace();
+    printMidiInitFailure(e);
     return null;
   }
 }
 
-boolean hasNonEmptyMidiDeviceLists() {
+MidiBus safeOutputMidiBus(int outputIndex) {
+  try {
+    if (!hasNonEmptyMidiOutputDeviceList()) {
+      println(NO_VALID_MIDI_OUTPUT_DEVICES_MESSAGE + " Skipping MidiBus output init.");
+      return null;
+    }
+    if (!isUsableMidiPortIndex(MidiBus.availableOutputs(), outputIndex)) {
+      println(NO_USABLE_MIDI_OUTPUTS_MESSAGE + " Skipping MidiBus output init.");
+      return null;
+    }
+    return new MidiBus(this, -1, outputIndex);
+  } catch (Throwable e) {
+    printMidiInitFailure(e);
+    return null;
+  }
+}
+
+MidiBus safeInputOutputMidiBus(int inputIndex, int outputIndex) {
+  try {
+    if (!hasNonEmptyMidiInputAndOutputDeviceLists()) {
+      println(NO_VALID_MIDI_DEVICES_MESSAGE + " Skipping MidiBus init.");
+      return null;
+    }
+    if (!isUsableMidiPortIndex(MidiBus.availableInputs(), inputIndex)) {
+      println(NO_USABLE_MIDI_INPUTS_MESSAGE + " Skipping MidiBus init.");
+      return null;
+    }
+    if (!isUsableMidiPortIndex(MidiBus.availableOutputs(), outputIndex)) {
+      println(NO_USABLE_MIDI_OUTPUTS_MESSAGE + " Skipping MidiBus init.");
+      return null;
+    }
+    return new MidiBus(this, inputIndex, outputIndex);
+  } catch (Throwable e) {
+    printMidiInitFailure(e);
+    return null;
+  }
+}
+
+void printMidiInitFailure(Throwable e) {
+  println("MIDI init failed. TheMidiBus can throw a NullPointerException when the selected");
+  println("device is not a real MIDI port (e.g. Java's \"Real Time Sequencer\") or when no");
+  println("virtual loopback device is installed.");
+  println("Fix: install a virtual MIDI port (IAC on macOS, loopMIDI on Windows) or choose a");
+  println("hardware device index from MidiBus.list(), then update the indices above.");
+  e.printStackTrace();
+}
+
+boolean hasNonEmptyMidiInputDeviceList() {
+  String[] inputs = MidiBus.availableInputs();
+  if (!hasNonEmptyMidiNames(inputs)) {
+    println(NO_VALID_MIDI_INPUT_DEVICES_MESSAGE);
+    return false;
+  }
+  return true;
+}
+
+boolean hasNonEmptyMidiOutputDeviceList() {
+  String[] outputs = MidiBus.availableOutputs();
+  if (!hasNonEmptyMidiNames(outputs)) {
+    println(NO_VALID_MIDI_OUTPUT_DEVICES_MESSAGE);
+    return false;
+  }
+  return true;
+}
+
+boolean hasNonEmptyMidiInputAndOutputDeviceLists() {
   String[] inputs = MidiBus.availableInputs();
   String[] outputs = MidiBus.availableOutputs();
   boolean inputsHaveNames = hasNonEmptyMidiNames(inputs);
@@ -60,6 +126,15 @@ boolean hasNonEmptyMidiNames(String[] ports) {
   }
 
   return false;
+}
+
+boolean isUsableMidiPortIndex(String[] ports, int index) {
+  if (ports == null || index < 0 || index >= ports.length) return false;
+  String portName = ports[index];
+  if (portName == null) return false;
+  String trimmed = portName.trim();
+  if (trimmed.length() == 0) return false;
+  return !isRealTimeSequencerName(trimmed);
 }
 
 boolean isRealTimeSequencerName(String portName) {
@@ -138,7 +213,7 @@ int[] buildMidiOutputCandidates(String[] nameHints, int fallbackIndex) {
 int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
   String[] inputs = MidiBus.availableInputs();
   if (!hasNonEmptyMidiNames(inputs)) {
-    println(NO_VALID_MIDI_DEVICES_MESSAGE);
+    println(NO_VALID_MIDI_INPUT_DEVICES_MESSAGE);
     return -1;
   }
 
@@ -184,7 +259,7 @@ int findMidiInputIndex(String[] nameHints, int fallbackIndex) {
 int findMidiOutputIndex(String[] nameHints, int fallbackIndex) {
   String[] outputs = MidiBus.availableOutputs();
   if (!hasNonEmptyMidiNames(outputs)) {
-    println(NO_VALID_MIDI_DEVICES_MESSAGE);
+    println(NO_VALID_MIDI_OUTPUT_DEVICES_MESSAGE);
     return -1;
   }
 

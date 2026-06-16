@@ -51,10 +51,10 @@ the main MSVP page.
 ## Stable Contract Surfaces
 
 The shared contract mirror is
-[contracts/msvp_live_rig_control.yaml](/Users/bseverns/Documents/GitHub/MSVP/contracts/msvp_live_rig_control.yaml).
+[contracts/msvp_live_rig_control.yaml](../contracts/msvp_live_rig_control.yaml).
 
 The local endpoint config that MSVP actually loads at runtime is
-[live_rig_interop.json](/Users/bseverns/Documents/GitHub/MSVP/MidiVideoSyphonBeats/data/live_rig_interop.json).
+[live_rig_interop.json](../MidiVideoSyphonBeats/data/live_rig_interop.json).
 
 Those two files together should keep these surfaces fixed:
 
@@ -75,7 +75,7 @@ MSVP is follower-only.
 - If clock goes stale, MSVP holds the last derived BPM; it does not become the
   transport owner.
 
-See [TRANSPORT_OWNERSHIP.md](/Users/bseverns/Documents/GitHub/MSVP/docs/TRANSPORT_OWNERSHIP.md).
+See [TRANSPORT_OWNERSHIP.md](TRANSPORT_OWNERSHIP.md).
 
 ## Scene Commands
 
@@ -90,6 +90,9 @@ Canonical scene contract:
 `live-rig-control` emits the OSC addresses on the `msvp` page.
 MSVP still listens for the note fallback path so manual/debug routing stays
 possible.
+
+For the current scene semantics and the recommended follow-up direction, see
+[scene-behavior.md](scene-behavior.md).
 
 ## Continuous Shaping Lanes
 
@@ -150,3 +153,7 @@ If you only want to validate this repo in isolation:
 ```sh
 python3 scripts/validate_rig_interop.py --local-only
 ```
+
+GitHub Actions runs that local-only contract validation on pull requests and
+pushes to `main`. The CI check does not require sibling rig repos or additional
+Python dependencies.

@@ -25,15 +25,15 @@ The config flip is the boundary. Do not blur the two modes together.
 
 ## 2) Make a real virtual MIDI port
 
-Follow [docs/midi-loopback-setup.md](/Users/bseverns/Documents/GitHub/MSVP/docs/midi-loopback-setup.md).
+Follow [midi-loopback-setup.md](midi-loopback-setup.md).
 You need a real loopback device such as IAC on macOS or loopMIDI on Windows.
 
 ## 3) Use the interop contract
 
 The machine-readable endpoint config lives at
-[live_rig_interop.json](/Users/bseverns/Documents/GitHub/MSVP/MidiVideoSyphonBeats/data/live_rig_interop.json).
+[live_rig_interop.json](../MidiVideoSyphonBeats/data/live_rig_interop.json).
 The focused cross-repo contract lives at
-[msvp_live_rig_control.yaml](/Users/bseverns/Documents/GitHub/MSVP/contracts/msvp_live_rig_control.yaml).
+[msvp_live_rig_control.yaml](../contracts/msvp_live_rig_control.yaml).
 
 The shipped file keeps rig mode off so the repo still behaves generically by default.
 To make MSVP act as a rig endpoint, flip the runtime flag and set the preferred
@@ -72,7 +72,7 @@ MSVP is a **clock follower**.
 - If ticks stop arriving for about `750ms` while transport is still playing, the
   HUD changes to `stale` and BPM holds its last derived value.
 
-See [TRANSPORT_OWNERSHIP.md](/Users/bseverns/Documents/GitHub/MSVP/docs/TRANSPORT_OWNERSHIP.md) for the operator-facing transport rules.
+See [TRANSPORT_OWNERSHIP.md](TRANSPORT_OWNERSHIP.md) for the operator-facing transport rules.
 
 ## 5) Scene triggers in rig endpoint mode
 
@@ -175,4 +175,4 @@ If anything is dead:
 
 - if you only see **`Real Time Sequencer`**, the loopback port is missing
 - if the overlay says MIDI is not connected, fix routing before testing scenes
-- use [RIG_SMOKE_TEST.md](/Users/bseverns/Documents/GitHub/MSVP/docs/RIG_SMOKE_TEST.md) as the operator checklist
+- use [RIG_SMOKE_TEST.md](RIG_SMOKE_TEST.md) as the operator checklist
