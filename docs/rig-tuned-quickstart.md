@@ -84,7 +84,8 @@ MIDI scene triggers use Ch10 notes with velocity greater than `0`:
 | 61 | Crash |
 | 62 | Soft |
 
-NoteOff, or NoteOn with velocity `0`, returns to `Neutral`.
+NoteOff, or NoteOn with velocity `0`, restores the macro base that was active
+before the scene cue.
 
 OSC scene equivalents use explicit addresses with `1` for on and `0` for off:
 
@@ -93,6 +94,10 @@ OSC scene equivalents use explicit addresses with `1` for on and `0` for off:
 /video/scene/crash
 /video/scene/soft
 ```
+
+OSC scene `1` applies the scene preset. OSC scene `0` restores the saved macro
+base. Overlapping scenes are last-wins: the most recent scene-on is active, and
+only release of that current scene restores the saved base.
 
 ## 6) Generic CC map
 

@@ -198,14 +198,11 @@ void loadLegacyInteropSettings(JSONObject root) {
   Object sceneVerbs = root.get("scene_verbs");
   if (sceneVerbs instanceof JSONObject) {
     JSONObject verbs = (JSONObject) sceneVerbs;
-    String[] keys = verbs.keys();
-    if (keys != null) {
-      for (int i = 0; i < keys.length; i++) {
-        String name = keys[i];
-        if (name == null) continue;
-        int note = readInt(verbs, name, -1);
-        registerSceneVerb(name, note);
-      }
+    for (Object keyObject : verbs.keys()) {
+      if (keyObject == null) continue;
+      String name = String.valueOf(keyObject);
+      int note = readInt(verbs, name, -1);
+      registerSceneVerb(name, note);
     }
   } else if (sceneVerbs instanceof JSONArray) {
     JSONArray verbs = (JSONArray) sceneVerbs;
@@ -272,9 +269,11 @@ String selectInteropProfileId(JSONObject profiles) {
   if (profiles.hasKey("default")) {
     return "default";
   }
-  String[] keys = profiles.keys();
-  if (keys == null || keys.length == 0) return "";
-  return keys[0];
+  for (Object keyObject : profiles.keys()) {
+    if (keyObject == null) continue;
+    return String.valueOf(keyObject);
+  }
+  return "";
 }
 
 void loadInteropProfilePad(JSONObject pad) {

@@ -26,13 +26,25 @@ class ScenePreset {
   }
 }
 
-boolean PRESET_NOTE_OFF_REVERT_TO_NEUTRAL = true;
+boolean SCENE_RELEASE_RESTORES_MACRO_BASE = true;
 
 ScenePreset presetNeutral;
 ScenePreset presetIntro;
 ScenePreset presetCrash;
 ScenePreset presetSoft;
 String activePresetName = "neutral";
+
+boolean sceneOverrideActive = false;
+String sceneOverrideName = "";
+int sceneSavedRigBaseLinesPerFrame;
+int sceneSavedRigBaseMaxLineSize;
+int sceneSavedRigBaseOpacityMin;
+int sceneSavedRigBaseEffectIntervalBeats;
+int sceneSavedRigBaseEffectDurationBeats;
+float sceneSavedRigBaseBpmSmoothing;
+int sceneSavedRigBaseEffectBias;
+String sceneSavedPresetName = "neutral";
+String sceneSavedEffectType = "lines";
 
 void initPresets() {
   presetNeutral = new ScenePreset(
@@ -85,15 +97,15 @@ void handleSceneNoteOn(int channel, int pitch, int velocity) {
   if (channel != rigMacroChannel) return;
   ScenePreset preset = presetForNoteOrVerb(pitch);
   if (preset == null) return;
-  applyPreset(preset);
+  applySceneOverride(preset);
 }
 
 void handleSceneNoteOff(int channel, int pitch) {
   if (!rigTunedMode) return;
   if (channel != rigMacroChannel) return;
-  if (PRESET_NOTE_OFF_REVERT_TO_NEUTRAL && presetNeutral != null) {
-    applyPreset(presetNeutral);
-  }
+  ScenePreset preset = presetForNoteOrVerb(pitch);
+  if (preset == null) return;
+  releaseSceneOverride(preset.name);
 }
 
 ScenePreset presetForNoteOrVerb(int pitch) {
@@ -120,6 +132,77 @@ void applyPreset(ScenePreset preset) {
   setParam("effectBias", preset.effectBias);
   applyEffectBiasToType();
   activePresetName = preset.name;
+}
+
+void applySceneOverride(ScenePreset preset) {
+  if (preset == null) return;
+  if (!rigTunedMode) {
+    applyPreset(preset);
+    return;
+  }
+
+  if (!sceneOverrideActive) {
+    snapshotSceneMacroBase();
+  }
+
+  sceneOverrideActive = true;
+  sceneOverrideName = preset.name;
+  applyPreset(preset);
+}
+
+void releaseSceneOverride(String sceneName) {
+  if (!SCENE_RELEASE_RESTORES_MACRO_BASE) {
+    if (presetNeutral != null) {
+      applyPreset(presetNeutral);
+    }
+    return;
+  }
+
+  if (!rigTunedMode) {
+    if (presetNeutral != null) {
+      applyPreset(presetNeutral);
+    }
+    return;
+  }
+
+  if (!sceneOverrideActive) return;
+  if (sceneName != null && sceneOverrideName != null && !sceneOverrideName.equals(sceneName)) {
+    return;
+  }
+
+  restoreSceneMacroBase();
+  sceneOverrideActive = false;
+  sceneOverrideName = "";
+}
+
+void cancelSceneOverride() {
+  sceneOverrideActive = false;
+  sceneOverrideName = "";
+}
+
+void snapshotSceneMacroBase() {
+  sceneSavedRigBaseLinesPerFrame = rigBaseLinesPerFrame;
+  sceneSavedRigBaseMaxLineSize = rigBaseMaxLineSize;
+  sceneSavedRigBaseOpacityMin = rigBaseOpacityMin;
+  sceneSavedRigBaseEffectIntervalBeats = rigBaseEffectIntervalBeats;
+  sceneSavedRigBaseEffectDurationBeats = rigBaseEffectDurationBeats;
+  sceneSavedRigBaseBpmSmoothing = rigBaseBpmSmoothing;
+  sceneSavedRigBaseEffectBias = rigBaseEffectBias;
+  sceneSavedPresetName = activePresetName;
+  sceneSavedEffectType = effectType;
+}
+
+void restoreSceneMacroBase() {
+  rigBaseLinesPerFrame = sceneSavedRigBaseLinesPerFrame;
+  rigBaseMaxLineSize = sceneSavedRigBaseMaxLineSize;
+  rigBaseOpacityMin = sceneSavedRigBaseOpacityMin;
+  rigBaseEffectIntervalBeats = sceneSavedRigBaseEffectIntervalBeats;
+  rigBaseEffectDurationBeats = sceneSavedRigBaseEffectDurationBeats;
+  rigBaseBpmSmoothing = sceneSavedRigBaseBpmSmoothing;
+  rigBaseEffectBias = sceneSavedRigBaseEffectBias;
+  activePresetName = sceneSavedPresetName;
+  effectType = sceneSavedEffectType;
+  applyRigEffectiveValues();
 }
 
 void applyEffectBiasToType() {

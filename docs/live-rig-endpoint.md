@@ -91,7 +91,9 @@ Canonical scene contract:
 MSVP still listens for the note fallback path so manual/debug routing stays
 possible.
 
-For the current scene semantics and the recommended follow-up direction, see
+Scenes are momentary macro-base overrides. Scene on applies the preset; scene
+off restores the macro base that was active before the scene cue. Overlapping
+scene cues are last-wins. For details, see
 [scene-behavior.md](scene-behavior.md).
 
 ## Continuous Shaping Lanes

@@ -589,23 +589,23 @@ void oscEvent(OscMessage message) {
 
   if (address.equals("/video/scene/intro")) {
     if (oscMessageIsActive(message)) {
-      applyPresetByName("intro");
+      applySceneOverride(presetIntro);
     } else {
-      applyPresetByName("neutral");
+      releaseSceneOverride("intro");
     }
     return;
   } else if (address.equals("/video/scene/crash")) {
     if (oscMessageIsActive(message)) {
-      applyPresetByName("crash");
+      applySceneOverride(presetCrash);
     } else {
-      applyPresetByName("neutral");
+      releaseSceneOverride("crash");
     }
     return;
   } else if (address.equals("/video/scene/soft")) {
     if (oscMessageIsActive(message)) {
-      applyPresetByName("soft");
+      applySceneOverride(presetSoft);
     } else {
-      applyPresetByName("neutral");
+      releaseSceneOverride("soft");
     }
     return;
   } else if (address.equals("/video/scene/neutral")) {
@@ -703,7 +703,7 @@ void sendOsc(String address, Object... args) {
       } else if (arg instanceof Boolean) {
         message.add(((Boolean) arg).booleanValue() ? 1 : 0);
       } else {
-        message.add(str(arg));
+        message.add(String.valueOf(arg));
       }
     }
   }

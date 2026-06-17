@@ -5,6 +5,7 @@ boolean blackoutActive = false;
 void applyPresetByName(String name) {
   if (name == null) return;
   String normalized = normalizeTargetKey(name);
+  cancelSceneOverride();
   if (normalized.equals("intro")) {
     applyPreset(presetIntro);
   } else if (normalized.equals("crash")) {

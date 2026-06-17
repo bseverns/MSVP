@@ -305,11 +305,9 @@ void seedDefaultRigMappings() {
 
 void addMappingsFromObject(JSONObject mappingObject, String lane) {
   if (mappingObject == null) return;
-  String[] keys = mappingObject.keys();
-  if (keys == null) return;
-  for (int i = 0; i < keys.length; i++) {
-    String key = keys[i];
-    if (key == null) continue;
+  for (Object keyObject : mappingObject.keys()) {
+    if (keyObject == null) continue;
+    String key = String.valueOf(keyObject);
     int cc = parseCcKey(key);
     String target = readString(mappingObject, key);
     addRigMapping(lane, cc, target);
