@@ -175,31 +175,17 @@ void draw() {
   background(0);
   updateVideoStatus();
 
-  if (isPlaying && lastTickTimeMs >= 0) {
+  if (midiReady && isPlaying && lastTickTimeMs >= 0) {
     long now = millis();
     if (now - lastTickTimeMs > clockDropoutMs) {
       transportStale = true;
     }
   }
 
-  if (!midiReady) {
-    // MIDI isn't online yet: keep the window alive, stay black, show HUD text,
-    // and skip every video/effect touchpoint so nothing tries to read null pixels.
-    drawHud();
-    if (midiDeviceListsEmpty) {
-      drawNoValidMidiBanner();
-    }
-    if (midiInitFailed) {
-      drawMidiInitFailedOverlay();
-    }
-    syphonServer.sendScreen();
-    broadcastStateIfNeeded();
-    return;
-  }
-
   if (blackoutActive) {
     syphonServer.sendScreen();
     drawHud();
+    drawMidiWarningOverlay();
     broadcastStateIfNeeded();
     return;
   }
@@ -207,6 +193,7 @@ void draw() {
   if (!isVideoReady()) {
     drawHud();
     drawVideoStatusOverlay();
+    drawMidiWarningOverlay();
     syphonServer.sendScreen();
     broadcastStateIfNeeded();
     return;
@@ -217,7 +204,7 @@ void draw() {
   video.speed(videoSpeed);
 
   // Beat-quantized logic, run once per beat
-  if (beatCount != lastBeatSeenInDraw) {
+  if (midiReady && beatCount != lastBeatSeenInDraw) {
     onBeat();
     lastBeatSeenInDraw = beatCount;
   }
@@ -246,6 +233,7 @@ void draw() {
 
   syphonServer.sendScreen();
   drawHud();
+  drawMidiWarningOverlay();
   broadcastStateIfNeeded();
 }
 
@@ -437,6 +425,15 @@ void drawMidiInitFailedOverlay() {
   textSize(36);
   text("MIDI init failed; see console", width / 2.0, height / 2.0);
   popStyle();
+}
+
+void drawMidiWarningOverlay() {
+  if (midiDeviceListsEmpty) {
+    drawNoValidMidiBanner();
+  }
+  if (midiInitFailed) {
+    drawMidiInitFailedOverlay();
+  }
 }
 
 void drawVideoStatusOverlay() {
