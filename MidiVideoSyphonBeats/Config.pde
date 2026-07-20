@@ -20,8 +20,9 @@ float CFG_BPM_SMOOTHING_MIN   = 0.05;
 float CFG_BPM_SMOOTHING_MAX   = 0.6;
 
 // Rig-tuned mode defaults
-// Keep generic mode as the default unless the interop contract opts into rig mode.
-boolean CFG_RIG_AUTO_ENABLE_FROM_INTEROP = false;
+// Keep generic mode as the default; show launches can opt in without editing data.
+boolean CFG_RIG_AUTO_ENABLE_FROM_INTEROP =
+  "true".equalsIgnoreCase(System.getenv("MSVP_RIG_TUNED_MODE"));
 int     CFG_RIG_DEFAULT_MACRO_CHANNEL = 10;
 int     CFG_RIG_DEFAULT_ANALYSIS_CHANNEL = 15;
 boolean rigTunedMode = false;

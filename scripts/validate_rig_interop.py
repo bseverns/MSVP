@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,29 @@ def load_json(path: Path) -> Any:
 
 def add_mismatch(errors: list[str], scope: str, field: str, actual: Any, expected: Any) -> None:
     errors.append(f"{scope}: {field} is {actual!r}, expected {expected!r}")
+
+
+def validate_processing_routes(repo_root: Path) -> tuple[list[str], list[str]]:
+    source_path = repo_root / "MidiVideoSyphonBeats" / "MidiVideoSyphonBeats.pde"
+    config_path = repo_root / "MidiVideoSyphonBeats" / "Config.pde"
+    source = source_path.read_text(encoding="utf-8")
+    config = config_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    route_expectations = {
+        "/video/scene/clean_camera": 'applyPresetByName("neutral")',
+        "/rig/state/blackout": "setBlackout(oscMessageBoolean(message))",
+    }
+    for address, action in route_expectations.items():
+        pattern = re.escape(f'address.equals("{address}")') + r"(?:(?!address\.equals).){0,300}" + re.escape(action)
+        if re.search(pattern, source, flags=re.DOTALL) is None:
+            errors.append(f"{source_path}: {address} must route to {action}")
+
+    if 'System.getenv("MSVP_RIG_TUNED_MODE")' not in config:
+        errors.append(f"{config_path}: missing MSVP_RIG_TUNED_MODE deployment override")
+
+    checks = [] if errors else [f"{source_path}: Clean Camera, blackout, and show-mode launch routes are wired"]
+    return errors, checks
 
 
 def collect_pads(profile: dict[str, Any], scope: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
@@ -75,8 +99,8 @@ def validate_lane_by_contract(
         if require_osc_binding and osc.get("address") != prefix + item["name"]:
             add_mismatch(errors, scope, "osc.address", osc.get("address"), prefix + item["name"])
 
-    for pad_id, pad in pads_by_id.items():
-        if not pad_id.startswith(lane_name + "_") and not pad_id.startswith("msvp_" + lane_name + "_"):
+    for pad_id in pads_by_id:
+        if not pad_id.startswith("msvp_" + lane_name + "_"):
             continue
         if pad_id not in {item["pad_id"] for item in lane_contract["parameters"]}:
             errors.append(f"{scope_prefix}: unknown {lane_name} pad '{pad_id}'")
@@ -93,6 +117,9 @@ def validate_msvp(interop_path: Path, contract: dict[str, Any]) -> tuple[list[st
     midi_runtime = runtime.get("midi", {})
     if not isinstance(midi_runtime, dict):
         return [f"{interop_path}: runtime.midi must be an object"], []
+    osc_runtime = runtime.get("osc", {})
+    if not isinstance(osc_runtime, dict):
+        return [f"{interop_path}: runtime.osc must be an object"], []
 
     profiles = data.get("profiles", {})
     if not isinstance(profiles, dict):
@@ -108,11 +135,17 @@ def validate_msvp(interop_path: Path, contract: dict[str, Any]) -> tuple[list[st
     scene_contract = contract["controls"]["scene_triggers"]
     macro_contract = contract["controls"]["macro_lane"]
     analysis_contract = contract["controls"]["analysis_lane"]
+    endpoint_runtime = contract.get("endpoint_runtime", {})
 
-    if runtime.get("profile") != "msvp":
-        add_mismatch(errors, str(interop_path), "runtime.profile", runtime.get("profile"), "msvp")
-    if not isinstance(runtime.get("rigTunedMode"), bool):
-        errors.append(f"{interop_path}: runtime.rigTunedMode must be boolean")
+    if data.get("interopVersion") != endpoint_runtime.get("interop_version"):
+        add_mismatch(errors, str(interop_path), "interopVersion", data.get("interopVersion"), endpoint_runtime.get("interop_version"))
+    if runtime.get("profile") != endpoint_runtime.get("profile"):
+        add_mismatch(errors, str(interop_path), "runtime.profile", runtime.get("profile"), endpoint_runtime.get("profile"))
+    if runtime.get("rigTunedMode") != endpoint_runtime.get("rig_tuned_mode_default"):
+        add_mismatch(errors, str(interop_path), "runtime.rigTunedMode", runtime.get("rigTunedMode"), endpoint_runtime.get("rig_tuned_mode_default"))
+    midi_expected = endpoint_runtime.get("midi", {})
+    if midi_runtime.get("preferredInput") != midi_expected.get("preferred_input"):
+        add_mismatch(errors, str(interop_path), "runtime.midi.preferredInput", midi_runtime.get("preferredInput"), midi_expected.get("preferred_input"))
     if midi_runtime.get("macroChannel") != macro_contract["channel"]:
         add_mismatch(
             errors,
@@ -129,6 +162,10 @@ def validate_msvp(interop_path: Path, contract: dict[str, Any]) -> tuple[list[st
             midi_runtime.get("analysisChannel"),
             analysis_contract["channel"],
         )
+    osc_expected = endpoint_runtime.get("osc", {})
+    for actual_key, expected_key in (("listenPort", "listen_port"), ("targetHost", "target_host"), ("targetPort", "target_port")):
+        if osc_runtime.get(actual_key) != osc_expected.get(expected_key):
+            add_mismatch(errors, str(interop_path), f"runtime.osc.{actual_key}", osc_runtime.get(actual_key), osc_expected.get(expected_key))
 
     for scene in scene_contract["scenes"]:
         scene_id = scene["semantic_id"]
@@ -246,7 +283,8 @@ def validate_live_rig_control(control_path: Path, contract: dict[str, Any]) -> t
         add_mismatch(errors, f"{control_path}:{controller['profile_id']}", "order", profile.get("order"), controller["order"])
 
     scene_contract = contract["controls"]["scene_triggers"]
-    for scene in scene_contract["scenes"]:
+    controller_scenes = scene_contract["scenes"] + scene_contract.get("controller_only_scenes", [])
+    for scene in controller_scenes:
         scene_id = scene["semantic_id"]
         pad = pads_by_id.get(scene_id)
         if pad is None:
@@ -257,6 +295,11 @@ def validate_live_rig_control(control_path: Path, contract: dict[str, Any]) -> t
             add_mismatch(errors, f"{control_path}:{scene_id}", "osc.address", osc.get("address"), scene["osc_address"])
         if "midi" in pad:
             errors.append(f"{control_path}:{scene_id}: controller profile should keep scene transport OSC-only")
+
+    expected_scene_ids = {scene["semantic_id"] for scene in controller_scenes}
+    for pad_id in sorted(pads_by_id):
+        if (pad_id.startswith("vid_scene_") or pad_id == "vid_state_blackout") and pad_id not in expected_scene_ids:
+            errors.append(f"{control_path}: unknown semantic ID '{pad_id}'")
 
     validate_lane_by_contract(
         errors,
@@ -331,6 +374,10 @@ def main() -> int:
     errors: list[str] = []
     checks: list[str] = [f"Contract {contract['name']} v{contract['version']}"]
 
+    route_errors, route_checks = validate_processing_routes(Path(__file__).resolve().parents[1])
+    errors.extend(route_errors)
+    checks.extend(route_checks)
+
     target_errors, target_checks = validate_msvp(args.msvp_interop, contract)
     errors.extend(target_errors)
     checks.extend(target_checks)
@@ -351,6 +398,13 @@ def main() -> int:
             checks.extend(target_checks)
         else:
             checks.append(f"{control_path}: skipped (not found)")
+
+        sibling_contract = default_live_rig_control.parents[1] / "contracts" / "msvp_live_rig_control.yaml"
+        if sibling_contract.exists():
+            if args.contract.read_bytes() != sibling_contract.read_bytes():
+                errors.append(f"{args.contract}: differs from sibling contract {sibling_contract}")
+            else:
+                checks.append(f"{args.contract}: byte-identical to sibling contract")
 
     if errors:
         print("FAIL")

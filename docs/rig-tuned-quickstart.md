@@ -36,13 +36,22 @@ The focused cross-repo contract lives at
 [msvp_live_rig_control.yaml](../contracts/msvp_live_rig_control.yaml).
 
 The shipped file keeps rig mode off so the repo still behaves generically by default.
-To make MSVP act as a rig endpoint, flip the runtime flag and set the preferred
-loopback input:
+For a show launch, leave that file unchanged and opt in through the dedicated
+runtime switch:
+
+```sh
+MSVP_RIG_TUNED_MODE=true processing-java --sketch="$PWD/MidiVideoSyphonBeats" --run
+```
+
+Run that command from the MSVP repository root. It loads the checked-in interop
+file, enables its Ch10 macro and Ch15 analysis lanes for this process, and keeps
+ordinary Processing launches in generic mode. Set the preferred loopback input
+in the interop file when the show machine does not use `IAC Bus 1`:
 
 ```json
 {
   "runtime": {
-    "rigTunedMode": true,
+    "rigTunedMode": false,
     "midi": {
       "preferredInput": "IAC Bus 1",
       "macroChannel": 10,
@@ -61,6 +70,17 @@ python3 scripts/validate_rig_interop.py
 That checks the local endpoint contract and, when sibling repos are present,
 also verifies `../live-rig/mappings.json` and
 `../live-rig-control/src/mappings.json`.
+
+Start the sibling controller's generic bridge with an MSVP-specific target for
+this process (its unchanged default remains UDP 9000 for other rig profiles):
+
+```sh
+cd ../live-rig-control/server
+npm ci
+OSC_PORT=9010 npm start
+```
+
+The bridge log must say `Forwarding to OSC 127.0.0.1:9010`.
 
 ## 4) Clock routing and transport ownership
 
@@ -93,11 +113,15 @@ OSC scene equivalents use explicit addresses with `1` for on and `0` for off:
 /video/scene/intro
 /video/scene/crash
 /video/scene/soft
+/video/scene/clean_camera
 ```
 
 OSC scene `1` applies the scene preset. OSC scene `0` restores the saved macro
 base. Overlapping scenes are last-wins: the most recent scene-on is active, and
 only release of that current scene restores the saved base.
+
+`/video/scene/clean_camera 1` applies the existing neutral preset. Blackout is
+stateful: `/rig/state/blackout 1` enables it and `0` disables it.
 
 ## 6) Generic CC map
 

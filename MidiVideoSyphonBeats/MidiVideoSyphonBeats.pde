@@ -610,6 +610,11 @@ void oscEvent(OscMessage message) {
       applyPresetByName("neutral");
     }
     return;
+  } else if (address.equals("/video/scene/clean_camera")) {
+    if (oscMessageIsActive(message)) {
+      applyPresetByName("neutral");
+    }
+    return;
   } else if (address.equals("/msvp/preset/neutral")) {
     if (oscMessageIsActive(message)) {
       applyPresetByName("neutral");
@@ -619,6 +624,9 @@ void oscEvent(OscMessage message) {
     setBlackout(oscMessageBoolean(message));
     return;
   } else if (address.equals("/msvp/blackout")) {
+    setBlackout(oscMessageBoolean(message));
+    return;
+  } else if (address.equals("/rig/state/blackout")) {
     setBlackout(oscMessageBoolean(message));
     return;
   }

@@ -78,7 +78,9 @@ controller, and scene sheet can be validated together.
   and OSC equivalents.
 
 The shipping interop file keeps rig mode off by default so the repository stays
-sketch-friendly until you explicitly flip that boundary.
+sketch-friendly. The documented show path enables it per process with
+`MSVP_RIG_TUNED_MODE=true`, and starts the sibling bridge with `OSC_PORT=9010`;
+see the rig-tuned quickstart for the exact commands.
 
 ### Wiring recipes (copy/paste this into your muscle memory)
 
