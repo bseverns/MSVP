@@ -144,6 +144,14 @@ Tunables live in `Config.pde` and several are exposed to MIDI CC.
 It responds on any MIDI channel when `runtime.rigTunedMode` is `false` in the interop file.
 When rig mode is enabled, macro and analysis channels are gated by the interop contract.
 
+### frZone analysis input
+
+MSVP can receive frZone’s canonical Ch 15 analysis CCs (`20`, `22`, `23`, and `24`)
+on the same virtual MIDI bus, as additive visual biases. This leaves both frZone’s
+committed rig contract and MSVP’s existing CC 1–7 analysis controls unchanged.
+See [`docs/frzone-midi-input.md`](docs/frzone-midi-input.md) for setup, mappings,
+and the pre-performance check.
+
 Before using rig endpoint mode, validate the shipped contract:
 
 ```sh

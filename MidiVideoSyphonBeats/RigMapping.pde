@@ -80,12 +80,31 @@ void handleControllerChange(int channel, int number, int value) {
       applyRigMacroMapping(number, value);
     }
   } else if (channel == rigAnalysisChannel) {
+    if (applyFrZoneAnalysisMapping(number, value)) return;
     if (rigMappingsFromInterop) {
       applyRigAnalysisTarget(rigAnalysisTargetsByCc.get(number), value);
     } else {
       applyRigAnalysisMapping(number, value);
     }
   }
+}
+
+// frZone's canonical Ch15 CCs are energy (0..127), not signed controller wind.
+// Silence stays neutral; energy adds to, never replaces, the MSVP macro base.
+boolean applyFrZoneAnalysisMapping(int number, int value) {
+  float normalized = constrain(value / 127.0f, 0.0f, 1.0f);
+  if (number == 20) {
+    biasParam("linesPerFrame", normalized);
+  } else if (number == 22) {
+    biasParam("maxLineSize", normalized);
+  } else if (number == 23) {
+    biasParam("opacityMin", normalized);
+  } else if (number == 24) {
+    biasParam("effectBias", normalized);
+  } else {
+    return false;
+  }
+  return true;
 }
 
 void applyGenericMapping(int number, int value) {
